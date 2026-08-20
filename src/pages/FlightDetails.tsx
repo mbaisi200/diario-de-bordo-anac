@@ -6,7 +6,6 @@ import {
   Trash2, 
   Plane, 
   Clock, 
-  MapPin, 
   Calendar,
   User,
   Pen,

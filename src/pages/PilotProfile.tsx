@@ -22,7 +22,7 @@ const medicalClasses = [
 
 export default function PilotProfilePage() {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<PilotProfileType | null>(null);
+  const [, setProfile] = useState<PilotProfileType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);

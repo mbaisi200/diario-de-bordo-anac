@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { PlusCircle, Download, Upload, FileText } from 'lucide-react';
 import type { FlightRecord } from '../types';
 import FlightList from '../components/FlightList';
-import { flightApi } from '../api/flights';
 import { pilotApi, PilotProfile } from '../api/pilot';
 import { generateFlightReport, downloadPdf } from '../utils/pdfReport';
 

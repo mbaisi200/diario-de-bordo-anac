@@ -17,6 +17,7 @@ export type FlightType =
   | 'ipc'           // Instrument Proficiency Check
   | 'bfr'           // Biennial Flight Review
   | 'ferry'         // Ferry flight
+  | 'night'         // Voo noturno
   | 'other';        // Outro
 
 /**

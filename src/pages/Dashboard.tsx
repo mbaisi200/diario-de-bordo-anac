@@ -7,7 +7,6 @@ import {
   TrendingUp, 
   PlusCircle,
   AlertTriangle,
-  Calendar,
   BarChart3,
   Zap
 } from 'lucide-react';

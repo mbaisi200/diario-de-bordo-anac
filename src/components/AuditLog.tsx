@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { History, User, Edit, Trash2, Plus, Check, Pen } from 'lucide-react';
+import { History, Edit, Trash2, Plus, Check, Pen } from 'lucide-react';
 
 interface AuditEntry {
   id: string;
