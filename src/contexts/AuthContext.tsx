@@ -48,8 +48,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setIsLoading(false);
   }, []);
 
+  const apiBase = import.meta.env.VITE_API_URL || '/api';
+
   const login = async (username: string, password: string) => {
-    const response = await fetch('/api/auth/login', {
+    const response = await fetch(`${apiBase}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
@@ -70,7 +72,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const register = async (username: string, password: string, name: string, email?: string) => {
-    const response = await fetch('/api/auth/register', {
+    const response = await fetch(`${apiBase}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password, name, email }),
