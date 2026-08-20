@@ -1,33 +1,14 @@
 {
-  "name": "diario-de-bordo-anac",
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
   "installCommand": "npm install",
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "https://diario-de-bordo-api.vercel.app/api/$1"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
-        }
-      ]
-    }
+    { "source": "/api/auth/(.*)", "destination": "/api/auth/$1" },
+    { "source": "/api/flights/(.*)", "destination": "/api/flights/$1" },
+    { "source": "/api/audit/(.*)", "destination": "/api/audit/$1" },
+    { "source": "/api/pilot/(.*)", "destination": "/api/pilot/$1" },
+    { "source": "/api/health", "destination": "/api/health.js" }
   ]
 }
