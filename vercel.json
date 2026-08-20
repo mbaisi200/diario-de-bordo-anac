@@ -9,6 +9,7 @@
     { "source": "/api/flights/(.*)", "destination": "/api/flights/$1" },
     { "source": "/api/audit/(.*)", "destination": "/api/audit/$1" },
     { "source": "/api/pilot/(.*)", "destination": "/api/pilot/$1" },
-    { "source": "/api/health", "destination": "/api/health.js" }
+    { "source": "/api/health", "destination": "/api/health.js" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
