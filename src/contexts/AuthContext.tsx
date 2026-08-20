@@ -5,6 +5,8 @@ interface User {
   username: string;
   name: string;
   email?: string;
+  role: 'master' | 'admin' | 'pilot';
+  tenantId: string | null;
 }
 
 interface AuthContextType {

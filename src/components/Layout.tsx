@@ -9,7 +9,9 @@ import {
   X,
   Download,
   LogOut,
-  User
+  User,
+  Shield,
+  Building2
 } from 'lucide-react';
 import { useState } from 'react';
 import MobileNav from './MobileNav';
@@ -21,18 +23,24 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-const navItems = [
-  { path: '/', label: 'Dashboard', icon: Home },
-  { path: '/new-flight', label: 'Novo Voo', icon: PlusCircle },
-  { path: '/flights', label: 'Meus Voos', icon: List },
-  { path: '/profile', label: 'Perfil', icon: User },
-];
-
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
   const { isDark } = useTheme();
+
+  const navItems = [
+    { path: '/', label: 'Dashboard', icon: Home },
+    { path: '/new-flight', label: 'Novo Voo', icon: PlusCircle },
+    { path: '/flights', label: 'Meus Voos', icon: List },
+    { path: '/profile', label: 'Perfil', icon: User },
+    ...(user?.role === 'master'
+      ? [{ path: '/master', label: 'Painel Master', icon: Shield }]
+      : []),
+    ...(user?.role === 'admin' || user?.role === 'master'
+      ? [{ path: '/admin', label: 'Painel Admin', icon: Building2 }]
+      : []),
+  ];
 
   return (
     <div className="min-h-screen flex flex-col">

@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { query } from '../lib/db.js';
+import { verifyToken } from '../lib/auth.js';
 
 export default async function handler(req, res) {
   // CORS
@@ -17,6 +18,7 @@ export default async function handler(req, res) {
       CREATE TABLE IF NOT EXISTS flights (
         id UUID PRIMARY KEY,
         user_id VARCHAR(255) NOT NULL DEFAULT 'default',
+        tenant_id UUID,
         date DATE NOT NULL,
         departure_time VARCHAR(5) NOT NULL,
         arrival_time VARCHAR(5) NOT NULL,
@@ -41,12 +43,22 @@ export default async function handler(req, res) {
       )
     `);
 
-    const userId = req.query.userId || 'default';
+    const authHeader = req.headers['authorization'] || '';
+    const authToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const authUser = authToken ? verifyToken(authToken) : null;
+
+    const tenantId = authUser?.tenantId || req.query.tenantId || null;
+    const userId = authUser?.userId || req.query.userId || 'default';
+
+    const where = tenantId
+      ? 'WHERE user_id = $1 AND tenant_id = $2'
+      : 'WHERE user_id = $1';
+    const params = tenantId ? [userId, tenantId] : [userId];
 
     if (req.method === 'GET') {
       const result = await query(
-        'SELECT * FROM flights WHERE user_id = $1 ORDER BY date DESC, departure_time DESC',
-        [userId]
+        `SELECT * FROM flights ${where} ORDER BY date DESC, departure_time DESC`,
+        params
       );
       return res.status(200).json(result);
     }
@@ -57,16 +69,16 @@ export default async function handler(req, res) {
 
       const result = await query(`
         INSERT INTO flights (
-          id, user_id, date, departure_time, arrival_time,
+          id, user_id, tenant_id, date, departure_time, arrival_time,
           aircraft_type, registration, departure_airport, arrival_airport,
           flight_types, flight_time_day, flight_time_night,
           flight_time_instrument, flight_time_cross_country,
           pilot_in_command, copilot, instructor,
           landings_day, landings_night, remarks, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
         RETURNING *
       `, [
-        id, data.userId || 'default', data.date, data.departureTime, data.arrivalTime,
+        id, data.userId || userId, tenantId, data.date, data.departureTime, data.arrivalTime,
         data.aircraftType, data.registration?.toUpperCase(), data.departureAirport?.toUpperCase(),
         data.arrivalAirport?.toUpperCase(), JSON.stringify(data.flightTypes || []),
         data.flightTime?.day || 0, data.flightTime?.night || 0,

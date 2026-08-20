@@ -1,29 +1,8 @@
-import crypto from 'crypto';
 import { query } from '../lib/db.js';
-
-function hashPassword(password) {
-  return crypto.createHash('sha256').update(password).digest('hex');
-}
-
-function generateToken(userId, username) {
-  const payload = { userId, username, timestamp: Date.now() };
-  const secret = process.env.JWT_SECRET || 'diario-bordo-secret-key-2024';
-  const signature = crypto
-    .createHmac('sha256', secret)
-    .update(JSON.stringify(payload))
-    .digest('hex');
-  return Buffer.from(JSON.stringify(payload)).toString('base64') + '.' + signature;
-}
+import { hashPassword, generateToken, setCors } from '../lib/auth.js';
 
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (!setCors(res, 'POST, OPTIONS')) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -44,24 +23,29 @@ export default async function handler(req, res) {
         password_hash VARCHAR(255) NOT NULL,
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255),
+        role VARCHAR(20) NOT NULL DEFAULT 'pilot',
+        tenant_id UUID,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         last_login TIMESTAMP WITH TIME ZONE
       )
     `);
 
-    // Create default user if not exists
+    // Create master user (neto) if not exists
     const existing = await query("SELECT id FROM users WHERE username = 'neto'");
     if (existing.length === 0) {
-      const hash = crypto.createHash('sha256').update('123456').digest('hex');
+      const hash = hashPassword('123456');
       await query(
-        "INSERT INTO users (id, username, password_hash, name) VALUES ($1, $2, $3, $4)",
+        "INSERT INTO users (id, username, password_hash, name, role) VALUES ($1, $2, $3, $4, 'master')",
         ['a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'neto', hash, 'Neto']
       );
+    } else {
+      // Ensure neto is always master
+      await query("UPDATE users SET role = 'master' WHERE username = 'neto'");
     }
 
     // Find user
     const result = await query(
-      'SELECT id, username, name, password_hash FROM users WHERE username = $1',
+      'SELECT id, username, name, password_hash, role, tenant_id, email FROM users WHERE username = $1',
       [username]
     );
 
@@ -79,11 +63,18 @@ export default async function handler(req, res) {
     // Update last login
     await query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id]);
 
-    const token = generateToken(user.id, user.username);
+    const token = generateToken(user);
 
     return res.status(200).json({
       token,
-      user: { id: user.id, username: user.username, name: user.name },
+      user: {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        tenantId: user.tenant_id || null,
+      },
     });
   } catch (error) {
     console.error('Login error:', error);

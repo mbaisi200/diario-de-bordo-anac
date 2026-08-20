@@ -1,17 +1,25 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, PlusCircle, List, User } from 'lucide-react';
+import { Home, PlusCircle, List, User, Shield, Building2 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-
-const tabs = [
-  { path: '/', label: 'Início', icon: Home },
-  { path: '/flights', label: 'Voos', icon: List },
-  { path: '/new-flight', label: 'Novo', icon: PlusCircle, isAction: true },
-  { path: '/profile', label: 'Perfil', icon: User },
-];
+import { useAuth } from '../contexts/AuthContext';
 
 export default function MobileNav() {
   const location = useLocation();
   const { isDark } = useTheme();
+  const { user } = useAuth();
+
+  const tabs = [
+    { path: '/', label: 'Início', icon: Home },
+    { path: '/flights', label: 'Voos', icon: List },
+    { path: '/new-flight', label: 'Novo', icon: PlusCircle, isAction: true },
+    ...(user?.role === 'master'
+      ? [{ path: '/master', label: 'Master', icon: Shield }]
+      : []),
+    ...(user?.role === 'admin' || user?.role === 'master'
+      ? [{ path: '/admin', label: 'Admin', icon: Building2 }]
+      : []),
+    { path: '/profile', label: 'Perfil', icon: User },
+  ];
 
   return (
     <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 border-t backdrop-blur-xl safe-area-inset ${

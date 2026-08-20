@@ -10,6 +10,8 @@
     { "source": "/api/audit/(.*)", "destination": "/api/audit/$1" },
     { "source": "/api/pilot/(.*)", "destination": "/api/pilot/$1" },
     { "source": "/api/health", "destination": "/api/health.js" },
+    { "source": "/api/master/(.*)", "destination": "/api/master/$1" },
+    { "source": "/api/admin/(.*)", "destination": "/api/admin/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

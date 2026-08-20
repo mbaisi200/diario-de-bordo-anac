@@ -8,6 +8,8 @@ import NewFlight from './pages/NewFlight';
 import FlightList from './pages/FlightList';
 import FlightDetails from './pages/FlightDetails';
 import PilotProfilePage from './pages/PilotProfile';
+import MasterAdmins from './pages/MasterAdmins';
+import AdminPanel from './pages/AdminPanel';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -38,6 +40,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function RoleRoute({ roles, children }: { roles: string[]; children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (!user || !roles.includes(user.role)) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
+
 function AppRoutes() {
   const { isAuthenticated } = useAuth();
 
@@ -49,6 +59,26 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Layout><Dashboard /></Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/master"
+        element={
+          <ProtectedRoute>
+            <RoleRoute roles={['master']}>
+              <Layout><MasterAdmins /></Layout>
+            </RoleRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <RoleRoute roles={['admin', 'master']}>
+              <Layout><AdminPanel /></Layout>
+            </RoleRoute>
           </ProtectedRoute>
         }
       />
