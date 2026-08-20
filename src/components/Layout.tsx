@@ -8,7 +8,6 @@ import {
   Menu,
   X,
   Download,
-  Settings,
   LogOut,
   User
 } from 'lucide-react';
