@@ -81,12 +81,6 @@ export default function Layout({ children }: LayoutProps) {
 
             <button
               className="btn-ghost"
-              title="Configurações"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
-            <button
-              className="btn-ghost"
               title="Exportar dados"
             >
               <Download className="w-5 h-5" />

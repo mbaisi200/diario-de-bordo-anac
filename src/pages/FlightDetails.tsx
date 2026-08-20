@@ -248,7 +248,7 @@ export default function FlightDetails() {
         </div>
 
         {/* Time Info */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           <div className="p-4 bg-aviation-dark rounded-lg">
             <div className="flex items-center gap-2 text-gray-400 mb-2">
               <Calendar className="w-4 h-4" />

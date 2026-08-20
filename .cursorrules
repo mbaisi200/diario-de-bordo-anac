@@ -1,0 +1,91 @@
+# Regras para Assistentes de IA
+
+## ⚠️ REGRAS OBRIGATÓRIAS
+
+### 1. NUNCA fazer git push sem solicitação
+- NÃO execute `git push` sem o usuário pedir
+- NÃO execute `git commit` sem consentimento
+- SEMPRE pergunte antes de enviar para o repositório
+
+### 2. Deploy
+- O Vercel faz deploy automático a cada push
+- NÃO use `npx vercel --prod`
+- APENAS faça `git push` quando autorizado
+
+### 3. Fluxo de trabalho
+1. Usuário solicita
+2. IA implementa
+3. IA testa
+4. IA pergunta se deve commitar
+5. Usuário autoriza
+6. IA faz push
+
+### 4. Formato de commit
+```
+feat: descrição
+
+🤖 Generated with Codebuff
+Co-Authored-By: Codebuff <noreply@codebuff.com>
+```
+
+---
+
+## 📱 REGRAS DE LAYOUT MOBILE
+
+### 5. EMPILHAR dados para evitar scroll
+- **SEMPRE** usar `grid-cols-1` como padrão mobile
+- Usar `sm:grid-cols-2` apenas quando necessário
+- Nunca usar mais de 2 colunas sem prefixo `md:` ou `lg:`
+- Dados tabulares: empilhar verticalmente, não usar scroll horizontal
+
+### 6. Grid responsivo padrão
+```tsx
+// ✅ CORRETO - empilha em mobile, 2 cols em tablet, 4 em desktop
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+
+// ✅ CORRETO - sempre empilha em mobile
+<div className="grid grid-cols-1 gap-3">
+
+// ❌ ERRADO - força 2 colunas em mobile
+<div className="grid grid-cols-2 gap-4">
+
+// ❌ ERRADO - força 3 colunas sem prefixo
+<div className="grid grid-cols-3 gap-4">
+```
+
+### 7. Espaçamento mobile
+- Usar `gap-3` em vez de `gap-4` para telas pequenas
+- Reduzir padding: `p-4` → `p-3` em mobile
+- Cards: padding mínimo `p-4`
+
+### 8. Formulários mobile
+- Campos **SEMPRE** full-width em mobile
+- Botões: largura total ou flex para ocupar espaço
+- Labels acima dos inputs, nunca ao lado
+
+### 9. Listas e tabelas
+- **NUNCA** usar scroll horizontal
+- Empilhar itens verticalmente
+- Dados em pares: usar `grid-cols-2` no máximo
+
+### 10. Header e navegação
+- Header: flex com `justify-between`
+- Nav mobile: tab bar inferior (MobileNav)
+- Menu hamburger: fullscreen overlay
+
+### 11. Breakpoints do Tailwind
+```
+mobile:  < 640px  (sem prefixo)
+sm:      640px+   (tablets pequenos)
+md:      768px+   (tablets)
+lg:      1024px+  (desktops)
+xl:      1280px+  (desktops grandes)
+```
+
+### 12. Regra de ouro
+> Se o conteúdo precisa de scroll horizontal em mobile, 
+> significa que o layout precisa ser refeito para empilhar verticalmente.
+
+---
+
+*Última atualização: 20/08/2026*

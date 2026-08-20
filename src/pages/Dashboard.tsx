@@ -125,7 +125,10 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 animate-slide-up">
         <div>
-          <h1 className="text-3xl font-bold gradient-text">Dashboard</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold gradient-text">Dashboard</h1>
+            <span className="badge">v1.0.0</span>
+          </div>
           <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>Visão geral do seu diário de bordo</p>
         </div>
         <Link to="/new-flight" className="btn-primary inline-flex items-center justify-center">
@@ -135,7 +138,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="stat-card group">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/20">
@@ -186,7 +189,7 @@ export default function Dashboard() {
           <BarChart3 className="w-5 h-5 text-blue-400" />
           Horas por Categoria
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
             <p className={`text-sm mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Dia</p>
             <p className="text-2xl font-bold font-mono gradient-text">

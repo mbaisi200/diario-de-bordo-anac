@@ -71,7 +71,7 @@ export default function FlightCard({ flight }: FlightCardProps) {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-3 gap-4 text-center">
+      <div className="grid grid-cols-3 gap-2 text-center">
         <div>
           <div className={`flex items-center justify-center gap-1 mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             <Clock className="w-4 h-4" />

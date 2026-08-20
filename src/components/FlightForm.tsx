@@ -151,7 +151,7 @@ export default function FlightForm({ initialData, onSubmit, onCancel, isLoading 
       {/* Date and Time Section */}
       <div className="card">
         <h3 className="text-lg font-semibold mb-4 text-aviation-accent">📅 Data e Horário</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-3">
           <div>
             <label className="block text-sm font-medium mb-2">Data do Voo *</label>
             <input
@@ -363,7 +363,7 @@ export default function FlightForm({ initialData, onSubmit, onCancel, isLoading 
       {/* Crew Section */}
       <div className="card">
         <h3 className="text-lg font-semibold mb-4 text-aviation-accent">👨‍✈️ Tripulação</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-3">
           <div>
             <label className="block text-sm font-medium mb-2">Piloto em Comando (PIC)</label>
             <input
