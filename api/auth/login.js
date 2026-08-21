@@ -30,6 +30,10 @@ export default async function handler(req, res) {
       )
     `);
 
+    // Migrate existing table: add missing columns if they don't exist
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'pilot'`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS tenant_id UUID`);
+
     // Create master user (neto) if not exists
     const existing = await query("SELECT id FROM users WHERE username = 'neto'");
     if (existing.length === 0) {

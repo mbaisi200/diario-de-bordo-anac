@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Save, X, AlertCircle } from 'lucide-react';
 import type { FlightRecord, FlightType, CreateFlightDTO } from '../types';
 import { flightUtils } from '../api/flights';
+import SearchableInput from './SearchableInput';
+import { searchAirports, searchAircraftTypes } from '../api/reference';
 
 interface FlightFormProps {
   initialData?: FlightRecord;
@@ -29,6 +31,9 @@ export default function FlightForm({ initialData, onSubmit, onCancel, isLoading 
     if (initialData) {
       return {
         userId: initialData.userId,
+        tenantId: initialData.tenantId,
+        flightNumber: initialData.flightNumber,
+        flightRules: initialData.flightRules || 'VFR',
         date: initialData.date,
         departureTime: initialData.departureTime,
         arrivalTime: initialData.arrivalTime,
@@ -36,18 +41,31 @@ export default function FlightForm({ initialData, onSubmit, onCancel, isLoading 
         registration: initialData.registration,
         departureAirport: initialData.departureAirport,
         arrivalAirport: initialData.arrivalAirport,
+        alternatedAirport: initialData.alternatedAirport,
         flightTypes: initialData.flightTypes,
         flightTime: initialData.flightTime,
+        totalDistance: initialData.totalDistance,
+        fuelType: initialData.fuelType,
+        fuelQuantityDeparture: initialData.fuelQuantityDeparture,
+        fuelQuantityArrival: initialData.fuelQuantityArrival,
+        passengersCount: initialData.passengersCount,
         pilotInCommand: initialData.pilotInCommand,
+        pilotInCommandLicense: initialData.pilotInCommandLicense,
         copilot: initialData.copilot,
+        copilotLicense: initialData.copilotLicense,
         instructor: initialData.instructor,
         landings: initialData.landings,
+        metarDeparture: initialData.metarDeparture,
+        metarArrival: initialData.metarArrival,
+        notams: initialData.notams,
+        obstacles: initialData.obstacles,
         remarks: initialData.remarks,
         status: initialData.status,
       };
     }
     return {
       userId: 'default',
+      flightRules: 'VFR',
       date: new Date().toISOString().split('T')[0],
       departureTime: '',
       arrivalTime: '',
@@ -61,6 +79,7 @@ export default function FlightForm({ initialData, onSubmit, onCancel, isLoading 
       copilot: '',
       instructor: '',
       landings: { day: 0, night: 0 },
+      passengersCount: 0,
       remarks: '',
       status: 'completed' as const,
     };
@@ -191,12 +210,13 @@ export default function FlightForm({ initialData, onSubmit, onCancel, isLoading 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-2">Tipo de Aeronave *</label>
-            <input
-              type="text"
+            <SearchableInput
               value={formData.aircraftType}
-              onChange={e => setFormData(prev => ({ ...prev, aircraftType: e.target.value }))}
-              placeholder="Ex: Cessna 172, Piper PA-28"
-              className="w-full"
+              onChange={value => setFormData(prev => ({ ...prev, aircraftType: value }))}
+              searchFn={searchAircraftTypes}
+              getLabel={option => option.model}
+              getSubLabel={option => [option.manufacturer, option.icao].filter(Boolean).join(' · ')}
+              placeholder="Busque por modelo, fabricante ou código ICAO"
             />
             {errors.aircraftType && <p className="text-red-400 text-sm mt-1">{errors.aircraftType}</p>}
           </div>
@@ -215,33 +235,91 @@ export default function FlightForm({ initialData, onSubmit, onCancel, isLoading 
         </div>
       </div>
 
+      {/* Flight Rules + Number (ANAC) */}
+      <div className="card">
+        <h3 className="text-lg font-semibold mb-4 text-aviation-accent">📋 Regras de Voo</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Regras de Voo *</label>
+            <select
+              value={formData.flightRules}
+              onChange={e => setFormData(prev => ({ ...prev, flightRules: e.target.value as any }))}
+              className="w-full"
+            >
+              <option value="VFR">VFR - Regras de Voo por Visualização</option>
+              <option value="IFR">IFR - Regras de Voo por Instrumentos</option>
+              <option value="YVFR">YVFR - VFR com pedido IFR</option>
+              <option value="ZIFR">ZIFR - IFR sem pedido</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Nº do Voo</label>
+            <input
+              type="text"
+              value={formData.flightNumber || ''}
+              onChange={e => setFormData(prev => ({ ...prev, flightNumber: e.target.value }))}
+              placeholder="Ex: NCT2468"
+              className="w-full"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Aerodromes Section */}
       <div className="card">
         <h3 className="text-lg font-semibold mb-4 text-aviation-accent">🛬 Aeródromos</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-2">Origem (ICAO) *</label>
-            <input
-              type="text"
+            <SearchableInput
               value={formData.departureAirport}
-              onChange={e => setFormData(prev => ({ ...prev, departureAirport: e.target.value.toUpperCase() }))}
-              placeholder="Ex: SBGR"
-              className="w-full"
-              maxLength={4}
+              onChange={value => setFormData(prev => ({ ...prev, departureAirport: value.toUpperCase() }))}
+              searchFn={searchAirports}
+              getLabel={option => option.icao}
+              getSubLabel={option => [option.name, option.city].filter(Boolean).join(' · ')}
+              placeholder="Busque por ICAO, nome ou cidade"
+              minQuery={1}
             />
             {errors.departureAirport && <p className="text-red-400 text-sm mt-1">{errors.departureAirport}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium mb-2">Destino (ICAO) *</label>
-            <input
-              type="text"
+            <SearchableInput
               value={formData.arrivalAirport}
-              onChange={e => setFormData(prev => ({ ...prev, arrivalAirport: e.target.value.toUpperCase() }))}
-              placeholder="Ex: SBGL"
-              className="w-full"
-              maxLength={4}
+              onChange={value => setFormData(prev => ({ ...prev, arrivalAirport: value.toUpperCase() }))}
+              searchFn={searchAirports}
+              getLabel={option => option.icao}
+              getSubLabel={option => [option.name, option.city].filter(Boolean).join(' · ')}
+              placeholder="Busque por ICAO, nome ou cidade"
+              minQuery={1}
             />
             {errors.arrivalAirport && <p className="text-red-400 text-sm mt-1">{errors.arrivalAirport}</p>}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Aeródromo Alternado (ICAO)</label>
+            <SearchableInput
+              value={formData.alternatedAirport || ''}
+              onChange={value => setFormData(prev => ({ ...prev, alternatedAirport: value.toUpperCase() }))}
+              searchFn={searchAirports}
+              getLabel={option => option.icao}
+              getSubLabel={option => [option.name, option.city].filter(Boolean).join(' · ')}
+              placeholder="ICAO alternado (se aplicável)"
+              minQuery={1}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Distância Total (NM)</label>
+            <input
+              type="number"
+              step="1"
+              min="0"
+              value={formData.totalDistance || ''}
+              onChange={e => setFormData(prev => ({ ...prev, totalDistance: parseFloat(e.target.value) || undefined }))}
+              placeholder="Nautical Miles"
+              className="w-full"
+            />
           </div>
         </div>
       </div>
@@ -360,37 +438,165 @@ export default function FlightForm({ initialData, onSubmit, onCancel, isLoading 
         </div>
       </div>
 
-      {/* Crew Section */}
+      {/* Fuel and Distance (ANAC) */}
+      <div className="card">
+        <h3 className="text-lg font-semibold mb-4 text-aviation-accent">⛽ Combustível e Passageiros</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-sm font-medium mb-2">Tipo de Combustível</label>
+            <select
+              value={formData.fuelType || ''}
+              onChange={e => setFormData(prev => ({ ...prev, fuelType: e.target.value || undefined }))}
+              className="w-full"
+            >
+              <option value="">Selecione...</option>
+              <option value="100LL">100LL (Avgas)</option>
+              <option value="Jet-A1">Jet-A1</option>
+              <option value="Jet-A">Jet-A</option>
+              <option value="Diesel">Diesel (Jet)</option>
+              <option value="outro">Outro</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Qtd. Comb. Decolagem (L/kg)</label>
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              value={formData.fuelQuantityDeparture || ''}
+              onChange={e => setFormData(prev => ({ ...prev, fuelQuantityDeparture: parseFloat(e.target.value) || undefined }))}
+              placeholder="Quantidade"
+              className="w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Qtd. Comb. Pouso (L/kg)</label>
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              value={formData.fuelQuantityArrival || ''}
+              onChange={e => setFormData(prev => ({ ...prev, fuelQuantityArrival: parseFloat(e.target.value) || undefined }))}
+              placeholder="Quantidade"
+              className="w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Nº de Passageiros</label>
+            <input
+              type="number"
+              min="0"
+              value={formData.passengersCount || ''}
+              onChange={e => setFormData(prev => ({ ...prev, passengersCount: parseInt(e.target.value) || 0 }))}
+              placeholder="0"
+              className="w-full"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Crew Section (ANAC) */}
       <div className="card">
         <h3 className="text-lg font-semibold mb-4 text-aviation-accent">👨‍✈️ Tripulação</h3>
-        <div className="grid grid-cols-1 gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-2">Piloto em Comando (PIC)</label>
-            <input
-              type="text"
-              value={formData.pilotInCommand}
-              onChange={e => setFormData(prev => ({ ...prev, pilotInCommand: e.target.value }))}
-              placeholder="Nome do PIC"
-              className="w-full"
-            />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium mb-2">Piloto em Comando (PIC) *</label>
+              <input
+                type="text"
+                value={formData.pilotInCommand}
+                onChange={e => setFormData(prev => ({ ...prev, pilotInCommand: e.target.value }))}
+                placeholder="Nome do PIC"
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Licença ANAC - PIC</label>
+              <input
+                type="text"
+                value={formData.pilotInCommandLicense || ''}
+                onChange={e => setFormData(prev => ({ ...prev, pilotInCommandLicense: e.target.value }))}
+                placeholder="Nº licença"
+                className="w-full"
+              />
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Segundo em Comando (SIC)</label>
-            <input
-              type="text"
-              value={formData.copilot}
-              onChange={e => setFormData(prev => ({ ...prev, copilot: e.target.value }))}
-              placeholder="Nome do SIC"
-              className="w-full"
-            />
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium mb-2">Segundo em Comando (SIC)</label>
+              <input
+                type="text"
+                value={formData.copilot}
+                onChange={e => setFormData(prev => ({ ...prev, copilot: e.target.value }))}
+                placeholder="Nome do SIC"
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Licença ANAC - SIC</label>
+              <input
+                type="text"
+                value={formData.copilotLicense || ''}
+                onChange={e => setFormData(prev => ({ ...prev, copilotLicense: e.target.value }))}
+                placeholder="Nº licença"
+                className="w-full"
+              />
+            </div>
           </div>
-          <div>
+          <div className="md:col-span-2">
             <label className="block text-sm font-medium mb-2">Instrutor</label>
             <input
               type="text"
               value={formData.instructor}
               onChange={e => setFormData(prev => ({ ...prev, instructor: e.target.value }))}
-              placeholder="Nome do Instrutor"
+              placeholder="Nome do Instrutor (se aplicável)"
+              className="w-full"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* METAR / NOTAMs (ANAC) */}
+      <div className="card">
+        <h3 className="text-lg font-semibold mb-4 text-aviation-accent">🌦️ Condições e NOTAMs</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium mb-2">METAR Origem</label>
+            <input
+              type="text"
+              value={formData.metarDeparture || ''}
+              onChange={e => setFormData(prev => ({ ...prev, metarDeparture: e.target.value }))}
+              placeholder="Ex: SBGR 151400Z 18008KT 9999 FEW040 28/18 Q1015"
+              className="w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">METAR Destino</label>
+            <input
+              type="text"
+              value={formData.metarArrival || ''}
+              onChange={e => setFormData(prev => ({ ...prev, metarArrival: e.target.value }))}
+              placeholder="Ex: SBGL 151400Z 20010KT 9999 SCT030 30/20 Q1013"
+              className="w-full"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium mb-2">NOTAMs Relevantes</label>
+            <textarea
+              value={formData.notams || ''}
+              onChange={e => setFormData(prev => ({ ...prev, notams: e.target.value }))}
+              placeholder="NOTAMs que afetam este voo (se houver)"
+              rows={2}
+              className="w-full resize-none"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium mb-2">Obstáculos Notáveis</label>
+            <input
+              type="text"
+              value={formData.obstacles || ''}
+              onChange={e => setFormData(prev => ({ ...prev, obstacles: e.target.value }))}
+              placeholder="Obstáculos notáveis na rota (se houver)"
               className="w-full"
             />
           </div>

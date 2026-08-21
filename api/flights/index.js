@@ -43,6 +43,9 @@ export default async function handler(req, res) {
       )
     `);
 
+    // Migrate existing table: add missing column if it doesn't exist
+    await query(`ALTER TABLE flights ADD COLUMN IF NOT EXISTS tenant_id UUID`);
+
     const authHeader = req.headers['authorization'] || '';
     const authToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
     const authUser = authToken ? verifyToken(authToken) : null;

@@ -90,33 +90,33 @@ router.get('/:id', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   try {
     const {
-      userId,
-      date,
-      departureTime,
-      arrivalTime,
-      aircraftType,
-      registration,
-      departureAirport,
-      arrivalAirport,
-      flightTypes,
-      flightTime,
-      pilotInCommand,
-      copilot,
-      instructor,
-      landings,
-      remarks,
-      status,
+      userId, tenantId,
+      flightNumber, flightRules,
+      date, departureTime, arrivalTime,
+      aircraftType, registration,
+      departureAirport, arrivalAirport, alternatedAirport,
+      flightTypes, flightTime, totalDistance,
+      fuelType, fuelQuantityDeparture, fuelQuantityArrival,
+      passengersCount,
+      pilotInCommand, pilotInCommandLicense,
+      copilot, copilotLicense, instructor,
+      landings, metarDeparture, metarArrival,
+      notams, obstacles,
+      remarks, status,
     } = req.body;
 
-    // Validate required fields
+    // Validate required fields per ANAC
     if (!date || !departureTime || !arrivalTime || !aircraftType || !registration || !departureAirport || !arrivalAirport) {
-      res.status(400).json({ error: 'Campos obrigatórios não preenchidos' });
+      res.status(400).json({ error: 'Campos obrigatórios não preenchidos (data, horários, aeronave, aeródromos)' });
       return;
     }
 
     const id = uuidv4();
     const flight = await flightRepository.create({
       userId: userId || 'default',
+      tenantId,
+      flightNumber,
+      flightRules: flightRules || 'VFR',
       date,
       departureTime,
       arrivalTime,
@@ -124,12 +124,24 @@ router.post('/', async (req: Request, res: Response) => {
       registration,
       departureAirport,
       arrivalAirport,
+      alternatedAirport,
       flightTypes: flightTypes || [],
       flightTime: flightTime || { day: 0, night: 0, instrument: 0, crossCountry: 0 },
+      totalDistance,
+      fuelType,
+      fuelQuantityDeparture,
+      fuelQuantityArrival,
+      passengersCount,
       pilotInCommand: pilotInCommand || '',
+      pilotInCommandLicense,
       copilot: copilot || '',
+      copilotLicense,
       instructor: instructor || '',
       landings: landings || { day: 0, night: 0 },
+      metarDeparture,
+      metarArrival,
+      notams,
+      obstacles,
       remarks: remarks || '',
       status: status || 'completed',
     }, id);
@@ -147,7 +159,14 @@ router.post('/', async (req: Request, res: Response) => {
  */
 router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const flight = await flightRepository.update(req.params.id, req.body);
+    // Check if flight is locked
+    const existing = await flightRepository.getById(req.params.id);
+    if (existing?.locked) {
+      res.status(403).json({ error: 'Voo bloqueado: registro assinado e imutável' });
+      return;
+    }
+
+    const flight = await flightRepository.update(req.params.id, req.body, req.body.userId);
     if (!flight) {
       res.status(404).json({ error: 'Voo não encontrado' });
       return;

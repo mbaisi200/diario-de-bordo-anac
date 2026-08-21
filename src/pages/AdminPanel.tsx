@@ -29,7 +29,7 @@ const emptyAircraft = {
 type Tab = 'pilots' | 'aircrafts';
 
 export default function AdminPanel() {
-  const { user, token } = useAuth();
+  const { user, token, logout } = useAuth();
   const tenantId = user?.tenantId || '';
 
   const [tab, setTab] = useState<Tab>('pilots');
@@ -45,7 +45,10 @@ export default function AdminPanel() {
   const [success, setSuccess] = useState('');
 
   const loadData = async () => {
-    if (!token || !tenantId) return;
+    if (!token || !tenantId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -202,6 +205,15 @@ export default function AdminPanel() {
 
       {loading ? (
         <div className="text-center py-8 text-slate-500">Carregando...</div>
+      ) : !tenantId ? (
+        <div className="card p-8 text-center space-y-4">
+          <p className="text-slate-500">
+            Sessão desatualizada: não foi possível identificar sua organização.
+          </p>
+          <button onClick={logout} className="btn-primary">
+            Sair e entrar novamente
+          </button>
+        </div>
       ) : tab === 'pilots' ? (
         <div className="space-y-4">
           <div className="flex justify-end">

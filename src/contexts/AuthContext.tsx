@@ -13,7 +13,6 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string, name: string, email?: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -73,27 +72,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(data.user);
   };
 
-  const register = async (username: string, password: string, name: string, email?: string) => {
-    const response = await fetch(`${apiBase}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, name, email }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Erro ao criar conta');
-    }
-
-    const data = await response.json();
-    
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    
-    setToken(data.token);
-    setUser(data.user);
-  };
-
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -107,7 +85,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         user,
         token,
         login,
-        register,
         logout,
         isLoading,
         isAuthenticated: !!user && !!token,

@@ -32,14 +32,19 @@ const mockFlight: FlightRecord = {
   flightTypes: ['pic', 'cross_country'],
   flightTime: { day: 2.5, night: 0, instrument: 0, crossCountry: 2.5 },
   pilotInCommand: 'João Silva',
+  pilotInCommandLicense: 'PPL-12345',
   copilot: '',
+  copilotLicense: '',
   instructor: '',
   landings: { day: 2, night: 0 },
   remarks: 'Voo de ida ao RJ. Boas condições meteorológicas. Tráfego intenso no TMA do Galeão. Pouso na RWY 10.',
   status: 'completed',
+  signed: false,
+  locked: false,
+  flightRules: 'VFR',
   createdAt: '2024-01-15T10:00:00Z',
   updatedAt: '2024-01-15T16:30:00Z',
-};
+} as FlightRecord;
 
 const flightTypeLabels: Record<string, string> = {
   dual: 'Duplo Comando',
@@ -345,7 +350,7 @@ export default function FlightDetails() {
         </div>
       </div>
 
-      {/* Crew */}
+      {/* Crew + Licenses (ANAC) */}
       <div className="card">
         <h3 className="text-lg font-semibold mb-4">👨‍✈️ Tripulação</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -355,6 +360,9 @@ export default function FlightDetails() {
               <span className="text-sm">Piloto em Comando (PIC)</span>
             </div>
             <p className="text-lg font-semibold">{flight.pilotInCommand || '-'}</p>
+            {flight.pilotInCommandLicense && (
+              <p className="text-xs text-gray-500 mt-1">Licença: {flight.pilotInCommandLicense}</p>
+            )}
           </div>
           <div className="p-4 bg-aviation-dark rounded-lg">
             <div className="flex items-center gap-2 text-gray-400 mb-2">
@@ -362,6 +370,9 @@ export default function FlightDetails() {
               <span className="text-sm">Segundo em Comando (SIC)</span>
             </div>
             <p className="text-lg font-semibold">{flight.copilot || '-'}</p>
+            {flight.copilotLicense && (
+              <p className="text-xs text-gray-500 mt-1">Licença: {flight.copilotLicense}</p>
+            )}
           </div>
           <div className="p-4 bg-aviation-dark rounded-lg">
             <div className="flex items-center gap-2 text-gray-400 mb-2">
@@ -373,12 +384,119 @@ export default function FlightDetails() {
         </div>
       </div>
 
+      {/* Fuel / Distance / Passengers (ANAC) */}
+      {((flight as any).fuelType || (flight as any).totalDistance || (flight as any).passengersCount > 0) && (
+        <div className="card">
+          <h3 className="text-lg font-semibold mb-4">⛽ Combustível e Dados ANAC</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {(flight as any).fuelType && (
+              <div className="p-4 bg-aviation-dark rounded-lg">
+                <p className="text-gray-400 text-sm mb-1">Combustível</p>
+                <p className="text-lg font-semibold">{(flight as any).fuelType}</p>
+              </div>
+            )}
+            {(flight as any).totalDistance != null && (
+              <div className="p-4 bg-aviation-dark rounded-lg">
+                <p className="text-gray-400 text-sm mb-1">Distância</p>
+                <p className="text-lg font-semibold">{(flight as any).totalDistance} NM</p>
+              </div>
+            )}
+            {(flight as any).fuelQuantityDeparture != null && (
+              <div className="p-4 bg-aviation-dark rounded-lg">
+                <p className="text-gray-400 text-sm mb-1">Comb. Decolagem</p>
+                <p className="text-lg font-semibold">{(flight as any).fuelQuantityDeparture} L</p>
+              </div>
+            )}
+            {(flight as any).fuelQuantityArrival != null && (
+              <div className="p-4 bg-aviation-dark rounded-lg">
+                <p className="text-gray-400 text-sm mb-1">Comb. Pouso</p>
+                <p className="text-lg font-semibold">{(flight as any).fuelQuantityArrival} L</p>
+              </div>
+            )}
+            {(flight as any).passengersCount != null && (flight as any).passengersCount > 0 && (
+              <div className="p-4 bg-aviation-dark rounded-lg">
+                <p className="text-gray-400 text-sm mb-1">Passageiros</p>
+                <p className="text-lg font-semibold">{(flight as any).passengersCount}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Alternated Airport + Flight Rules (ANAC) */}
+      {((flight as any).alternatedAirport || (flight as any).flightRules) && (
+        <div className="card">
+          <h3 className="text-lg font-semibold mb-4">📋 Regras de Voo</h3>
+          <div className="grid grid-cols-2 gap-4">
+            {(flight as any).flightRules && (
+              <div className="p-4 bg-aviation-dark rounded-lg">
+                <p className="text-gray-400 text-sm mb-1">Regras de Voo</p>
+                <p className="text-lg font-semibold">{(flight as any).flightRules}</p>
+              </div>
+            )}
+            {(flight as any).alternatedAirport && (
+              <div className="p-4 bg-aviation-dark rounded-lg">
+                <p className="text-gray-400 text-sm mb-1">Alternado</p>
+                <p className="text-lg font-mono font-semibold">{(flight as any).alternatedAirport}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* METAR / NOTAMs (ANAC) */}
+      {((flight as any).metarDeparture || (flight as any).notams) && (
+        <div className="card">
+          <h3 className="text-lg font-semibold mb-4">🌦️ Condições e NOTAMs</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(flight as any).metarDeparture && (
+              <div className="p-4 bg-aviation-dark rounded-lg">
+                <p className="text-gray-400 text-sm mb-1">METAR Origem</p>
+                <p className="text-sm font-mono text-gray-300">{(flight as any).metarDeparture}</p>
+              </div>
+            )}
+            {(flight as any).metarArrival && (
+              <div className="p-4 bg-aviation-dark rounded-lg">
+                <p className="text-gray-400 text-sm mb-1">METAR Destino</p>
+                <p className="text-sm font-mono text-gray-300">{(flight as any).metarArrival}</p>
+              </div>
+            )}
+            {(flight as any).notams && (
+              <div className="p-4 bg-aviation-dark rounded-lg md:col-span-2">
+                <p className="text-gray-400 text-sm mb-1">NOTAMs</p>
+                <p className="text-sm text-gray-300 whitespace-pre-wrap">{(flight as any).notams}</p>
+              </div>
+            )}
+            {(flight as any).obstacles && (
+              <div className="p-4 bg-aviation-dark rounded-lg md:col-span-2">
+                <p className="text-gray-400 text-sm mb-1">Obstáculos</p>
+                <p className="text-sm text-gray-300">{(flight as any).obstacles}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Remarks */}
       {flight.remarks && (
         <div className="card">
           <h3 className="text-lg font-semibold mb-4">📝 Observações</h3>
           <div className="p-4 bg-aviation-dark rounded-lg">
             <p className="text-gray-300 whitespace-pre-wrap">{flight.remarks}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Integrity Hash (Resolução 458/2017) */}
+      {(flight as any).integrityHash && (
+        <div className="card">
+          <h3 className="text-lg font-semibold mb-4 text-green-400">🔒 Integridade do Registro</h3>
+          <div className="p-4 bg-aviation-dark rounded-lg">
+            <p className="text-gray-400 text-sm mb-1">Hash SHA-256</p>
+            <p className="text-xs font-mono text-gray-500 break-all">{(flight as any).integrityHash}</p>
+            <p className="text-xs text-green-500 mt-2">
+              ✓ Registro verificável conforme Resolução 458/2017
+            </p>
           </div>
         </div>
       )}
@@ -474,10 +592,12 @@ export default function FlightDetails() {
       {/* Audit Log */}
       <AuditLog entityType="flight" entityId={flight.id} />
 
-      {/* Disclaimer */}
-      <div className="card bg-yellow-900/30 border-yellow-500">
-        <p className="text-yellow-500 text-sm">
-          ⚠️ Este registro é uma cópia de segurança. O diário de bordo oficial deve seguir o formato homologado pela ANAC (Resolução nº 478).
+      {/* Disclaimer ANAC */}
+      <div className="card bg-blue-900/30 border-blue-500">
+        <p className="text-blue-400 text-sm">
+          📋 Este registro segue o modelo de referência ANAC (Portaria 3.220/SPO/SAR) e Resolução 458/2017.
+          {(flight as any).integrityHash && ' Hash de integridade registrado para verificação.'}
+          {flight.signed && ' Registro assinado digitalmente - imutável conforme legislação.'}
         </p>
       </div>
     </div>

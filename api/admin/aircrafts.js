@@ -30,6 +30,14 @@ export default async function handler(req, res) {
       )
     `);
 
+    await query(`ALTER TABLE aircrafts ADD COLUMN IF NOT EXISTS tenant_id UUID`);
+    await query(`ALTER TABLE aircrafts ADD COLUMN IF NOT EXISTS model VARCHAR(255)`);
+    await query(`ALTER TABLE aircrafts ADD COLUMN IF NOT EXISTS manufacturer VARCHAR(255)`);
+    await query(`ALTER TABLE aircrafts ADD COLUMN IF NOT EXISTS category VARCHAR(50)`);
+    await query(`ALTER TABLE aircrafts ADD COLUMN IF NOT EXISTS year INTEGER`);
+    await query(`ALTER TABLE aircrafts ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE`);
+    await query(`ALTER TABLE aircrafts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()`);
+
     if (req.method === 'GET') {
       const result = await query(
         `SELECT * FROM aircrafts

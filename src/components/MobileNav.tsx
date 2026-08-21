@@ -15,7 +15,7 @@ export default function MobileNav() {
     ...(user?.role === 'master'
       ? [{ path: '/master', label: 'Master', icon: Shield }]
       : []),
-    ...(user?.role === 'admin' || user?.role === 'master'
+    ...(user?.role === 'admin'
       ? [{ path: '/admin', label: 'Admin', icon: Building2 }]
       : []),
     { path: '/profile', label: 'Perfil', icon: User },

@@ -229,8 +229,15 @@ export function generateSingleFlightReport(
     ['Decolagem:', `${flightUtils.formatTime(flight.departureTime)} UTC`],
     ['Pouso:', `${flightUtils.formatTime(flight.arrivalTime)} UTC`],
     ['Aeronave:', `${flight.aircraftType} (${flight.registration})`],
-    ['Rota:', `${flight.departureAirport} → ${flight.arrivalAirport}`],
+    ['Rota:', `${flight.departureAirport} → ${flight.arrivalAirport}${(flight as any).alternatedAirport ? ` → Alt: ${(flight as any).alternatedAirport}` : ''}`],
+    ['Regras de Voo:', (flight as any).flightRules || 'VFR'],
     ['Tipo de Voo:', flight.flightTypes.join(', ')],
+    ['Nº do Voo:', (flight as any).flightNumber || '-'],
+    ['Distância:', (flight as any).totalDistance ? `${(flight as any).totalDistance} NM` : '-'],
+    ['Passageiros:', String((flight as any).passengersCount || 0)],
+    ['Combustível:', (flight as any).fuelType || '-'],
+    ['Comb. Decolagem:', (flight as any).fuelQuantityDeparture ? `${(flight as any).fuelQuantityDeparture} L/kg` : '-'],
+    ['Comb. Pouso:', (flight as any).fuelQuantityArrival ? `${(flight as any).fuelQuantityArrival} L/kg` : '-'],
   ];
 
   flightData.forEach(([label, value]) => {
@@ -293,13 +300,42 @@ export function generateSingleFlightReport(
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text(`PIC: ${flight.pilotInCommand || '-'}`, 10, y);
+  doc.text(`PIC: ${flight.pilotInCommand || '-'}${(flight as any).pilotInCommandLicense ? ` (Lic: ${(flight as any).pilotInCommandLicense})` : ''}`, 10, y);
   y += 6;
-  doc.text(`SIC: ${flight.copilot || '-'}`, 10, y);
+  doc.text(`SIC: ${flight.copilot || '-'}${(flight as any).copilotLicense ? ` (Lic: ${(flight as any).copilotLicense})` : ''}`, 10, y);
   y += 6;
   doc.text(`Instrutor: ${flight.instructor || '-'}`, 10, y);
 
   y += 12;
+
+  // Condições Meteorológicas e NOTAMs (ANAC)
+  if ((flight as any).metarDeparture || (flight as any).notams) {
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CONDIÇÕES E NOTAMs', 10, y);
+    y += 8;
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    if ((flight as any).metarDeparture) {
+      doc.text(`METAR Origem: ${(flight as any).metarDeparture}`, 10, y);
+      y += 5;
+    }
+    if ((flight as any).metarArrival) {
+      doc.text(`METAR Destino: ${(flight as any).metarArrival}`, 10, y);
+      y += 5;
+    }
+    if ((flight as any).notams) {
+      const notamLines = doc.splitTextToSize(`NOTAMs: ${(flight as any).notams}`, pageWidth - 20);
+      doc.text(notamLines, 10, y);
+      y += notamLines.length * 5;
+    }
+    if ((flight as any).obstacles) {
+      doc.text(`Obstáculos: ${(flight as any).obstacles}`, 10, y);
+      y += 5;
+    }
+    y += 5;
+  }
 
   // Observações
   if (flight.remarks) {
@@ -330,10 +366,17 @@ export function generateSingleFlightReport(
 
   // Footer
   const pageFooterY = doc.internal.pageSize.getHeight() - 15;
+  // Hash de integridade (Resolução 458/2017)
+  if ((flight as any).integrityHash) {
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Hash de Integridade: ${(flight as any).integrityHash}`, 10, pageFooterY - 10);
+  }
+
   doc.setFontSize(7);
   doc.setFont('helvetica', 'italic');
   doc.text(
-    'Diário de Bordo Digital - ANAC Compliant | Gerado em: ' + new Date().toLocaleString('pt-BR'),
+    'Documento gerado conforme Portaria 3.220/SPO/SAR e Resolução 458/2017 - ANAC Compliant',
     pageWidth / 2, pageFooterY,
     { align: 'center' }
   );

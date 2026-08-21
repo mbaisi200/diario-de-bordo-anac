@@ -50,6 +50,16 @@ export default function FlightCard({ flight }: FlightCardProps) {
             <Calendar className="w-4 h-4" />
             <span className="text-sm">{flightUtils.formatDate(flight.date)}</span>
           </div>
+          {(flight as any).flightRules && (
+            <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-500/20 text-blue-400">
+              {(flight as any).flightRules}
+            </span>
+          )}
+          {flight.signed && (
+            <span className="inline-block mt-1 ml-1 px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400">
+              ✓ Assinado
+            </span>
+          )}
         </div>
       </div>
 

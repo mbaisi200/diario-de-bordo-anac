@@ -25,8 +25,14 @@ function hashPassword(password: string): string {
 /**
  * Generate simple JWT-like token
  */
-function generateToken(userId: string, username: string): string {
-  const payload = { userId, username, timestamp: Date.now() };
+function generateToken(user: { id: string; username: string; role?: string; tenant_id?: string | null }): string {
+  const payload = {
+    userId: user.id,
+    username: user.username,
+    role: user.role || 'pilot',
+    tenantId: user.tenant_id || null,
+    timestamp: Date.now(),
+  };
   const secret = process.env.JWT_SECRET || 'diario-bordo-secret-key-2024';
   const signature = crypto
     .createHmac('sha256', secret)
@@ -38,7 +44,7 @@ function generateToken(userId: string, username: string): string {
 /**
  * Verify token
  */
-function verifyToken(token: string): { userId: string; username: string } | null {
+function verifyToken(token: string): { userId: string; username: string; role: string; tenantId: string | null } | null {
   try {
     const [payloadBase64, signature] = token.split('.');
     if (!payloadBase64 || !signature) return null;
@@ -47,7 +53,13 @@ function verifyToken(token: string): { userId: string; username: string } | null
     const secret = process.env.JWT_SECRET || 'diario-bordo-secret-key-2024';
     const expectedSignature = crypto
       .createHmac('sha256', secret)
-      .update(JSON.stringify({ userId: payload.userId, username: payload.username, timestamp: payload.timestamp }))
+      .update(JSON.stringify({
+        userId: payload.userId,
+        username: payload.username,
+        role: payload.role || 'pilot',
+        tenantId: payload.tenantId || null,
+        timestamp: payload.timestamp,
+      }))
       .digest('hex');
 
     if (signature !== expectedSignature) return null;
@@ -57,7 +69,12 @@ function verifyToken(token: string): { userId: string; username: string } | null
       return null;
     }
 
-    return { userId: payload.userId, username: payload.username };
+    return {
+      userId: payload.userId,
+      username: payload.username,
+      role: payload.role || 'pilot',
+      tenantId: payload.tenantId || null,
+    };
   } catch {
     return null;
   }
@@ -78,7 +95,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
     // Find user
     const result = await sql(
-      'SELECT id, username, name, password_hash FROM users WHERE username = $1',
+      'SELECT id, username, name, password_hash, role, tenant_id FROM users WHERE username = $1',
       [username]
     );
 
@@ -100,7 +117,7 @@ router.post('/login', async (req: Request, res: Response) => {
     await sql('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id]);
 
     // Generate token
-    const token = generateToken(user.id, user.username);
+    const token = generateToken(user);
 
     res.json({
       token,
@@ -108,6 +125,8 @@ router.post('/login', async (req: Request, res: Response) => {
         id: user.id,
         username: user.username,
         name: user.name,
+        role: user.role || 'pilot',
+        tenantId: user.tenant_id || null,
       },
     });
   } catch (error) {
@@ -156,7 +175,7 @@ router.post('/register', async (req: Request, res: Response) => {
     );
 
     // Generate token
-    const token = generateToken(id, username);
+    const token = generateToken({ id, username, role: 'pilot' });
 
     res.status(201).json({
       token,

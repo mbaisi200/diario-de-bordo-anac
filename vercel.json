@@ -12,6 +12,8 @@
     { "source": "/api/health", "destination": "/api/health.js" },
     { "source": "/api/master/(.*)", "destination": "/api/master/$1" },
     { "source": "/api/admin/(.*)", "destination": "/api/admin/$1" },
+    { "source": "/api/airports", "destination": "/api/airports.js" },
+    { "source": "/api/aircraft-types", "destination": "/api/aircraft-types.js" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

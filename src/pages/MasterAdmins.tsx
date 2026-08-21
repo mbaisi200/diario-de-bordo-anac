@@ -34,6 +34,7 @@ export default function MasterAdmins() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [searchingCep, setSearchingCep] = useState(false);
+  const [cepLoaded, setCepLoaded] = useState(false);
 
   const loadAdmins = async () => {
     if (!token) return;
@@ -54,13 +55,17 @@ export default function MasterAdmins() {
 
   const handleCepSearch = async () => {
     const cep = form.address.cep;
-    if (cep.replace(/\D/g, '').length !== 8) return;
+    if (cep.replace(/\D/g, '').length !== 8) {
+      setError('Digite um CEP válido (8 dígitos)');
+      return;
+    }
     setSearchingCep(true);
     setError('');
     try {
       const data = await fetchAddressByCep(cep);
       if (!data) {
         setError('CEP não encontrado');
+        setCepLoaded(false);
         return;
       }
       setForm((prev) => ({
@@ -74,11 +79,18 @@ export default function MasterAdmins() {
           complement: data.complemento || prev.address.complement,
         },
       }));
+      setCepLoaded(true);
     } catch {
       setError('Erro ao buscar CEP');
+      setCepLoaded(false);
     } finally {
       setSearchingCep(false);
     }
+  };
+
+  const handleCepChange = (value: string) => {
+    setForm((prev) => ({ ...prev, address: { ...prev.address, cep: maskCep(value) } }));
+    setCepLoaded(false);
   };
 
   const updatePhone = (index: number, value: string) => {
@@ -114,6 +126,10 @@ export default function MasterAdmins() {
       setError('Usuário e senha (mínimo 6 caracteres) são obrigatórios');
       return;
     }
+    if (!cepLoaded) {
+      setError('Informe o CEP e clique em buscar antes de cadastrar');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -130,6 +146,7 @@ export default function MasterAdmins() {
       setSuccess('Admin cadastrado com sucesso!');
       setShowForm(false);
       setForm(emptyForm);
+      setCepLoaded(false);
       await loadAdmins();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao cadastrar admin');
@@ -168,6 +185,7 @@ export default function MasterAdmins() {
             setShowForm(!showForm);
             setError('');
             setSuccess('');
+            setCepLoaded(false);
           }}
           className="btn-primary"
         >
@@ -233,36 +251,45 @@ export default function MasterAdmins() {
               <h4 className="text-sm font-semibold text-blue-500 flex items-center gap-2">
                 <MapPin className="w-4 h-4" /> Endereço
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                <div className="space-y-1 md:col-span-2">
-                  <label className="block text-sm font-medium">CEP</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={form.address.cep}
-                      onChange={(e) => setForm({ ...form, address: { ...form.address, cep: maskCep(e.target.value) } })}
-                      placeholder="00000-000"
-                      className={inputClass}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleCepSearch}
-                      disabled={searchingCep}
-                      className="btn-ghost shrink-0"
-                      title="Buscar CEP"
-                    >
-                      {searchingCep ? (
-                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                      ) : (
-                        <Search className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
 
+              {/* CEP - primeiro, com busca ViaCEP */}
+              <div className="space-y-1">
+                <label className="block text-sm font-medium">CEP</label>
+                <div className="flex gap-2 max-w-md">
+                  <input
+                    type="text"
+                    value={form.address.cep}
+                    onChange={(e) => handleCepChange(e.target.value)}
+                    placeholder="00000-000"
+                    className={inputClass}
+                    inputMode="numeric"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCepSearch}
+                    disabled={searchingCep || form.address.cep.replace(/\D/g, '').length !== 8}
+                    className="btn-primary shrink-0"
+                    title="Buscar CEP"
+                  >
+                    {searchingCep ? (
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                    ) : (
+                      <Search className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                <p className={`text-xs ${cepLoaded ? 'text-green-500' : 'text-slate-400'}`}>
+                  {cepLoaded
+                    ? '✓ Endereço localizado pelo CEP'
+                    : 'Digite o CEP e clique em buscar para liberar o endereço'}
+                </p>
+              </div>
+
+              {/* Campos do endereço - bloqueados até o CEP ser buscado */}
+              <div className={`grid grid-cols-1 md:grid-cols-6 gap-4 ${cepLoaded ? '' : 'opacity-50 pointer-events-none select-none'}`}>
                 <div className="space-y-1 md:col-span-4">
                   <label className="block text-sm font-medium">Logradouro</label>
                   <input
@@ -271,6 +298,7 @@ export default function MasterAdmins() {
                     onChange={(e) => setForm({ ...form, address: { ...form.address, street: e.target.value } })}
                     placeholder="Rua, Avenida..."
                     className={inputClass}
+                    disabled={!cepLoaded}
                   />
                 </div>
 
@@ -282,6 +310,7 @@ export default function MasterAdmins() {
                     onChange={(e) => setForm({ ...form, address: { ...form.address, number: e.target.value } })}
                     placeholder="123"
                     className={inputClass}
+                    disabled={!cepLoaded}
                   />
                 </div>
 
@@ -293,6 +322,7 @@ export default function MasterAdmins() {
                     onChange={(e) => setForm({ ...form, address: { ...form.address, complement: e.target.value } })}
                     placeholder="Sala, andar..."
                     className={inputClass}
+                    disabled={!cepLoaded}
                   />
                 </div>
 
@@ -304,6 +334,7 @@ export default function MasterAdmins() {
                     onChange={(e) => setForm({ ...form, address: { ...form.address, neighborhood: e.target.value } })}
                     placeholder="Bairro"
                     className={inputClass}
+                    disabled={!cepLoaded}
                   />
                 </div>
 
@@ -315,6 +346,7 @@ export default function MasterAdmins() {
                     onChange={(e) => setForm({ ...form, address: { ...form.address, city: e.target.value } })}
                     placeholder="Cidade"
                     className={inputClass}
+                    disabled={!cepLoaded}
                   />
                 </div>
 
@@ -327,6 +359,7 @@ export default function MasterAdmins() {
                     placeholder="SP"
                     maxLength={2}
                     className={inputClass}
+                    disabled={!cepLoaded}
                   />
                 </div>
               </div>

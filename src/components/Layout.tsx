@@ -37,7 +37,7 @@ export default function Layout({ children }: LayoutProps) {
     ...(user?.role === 'master'
       ? [{ path: '/master', label: 'Painel Master', icon: Shield }]
       : []),
-    ...(user?.role === 'admin' || user?.role === 'master'
+    ...(user?.role === 'admin'
       ? [{ path: '/admin', label: 'Painel Admin', icon: Building2 }]
       : []),
   ];

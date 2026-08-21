@@ -203,4 +203,3 @@ router.post('/signatures/verify', async (req: Request, res: Response) => {
 });
 
 export default router;
-export { logAudit };

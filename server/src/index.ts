@@ -6,6 +6,9 @@ import flightsRouter from './routes/flights.js';
 import authRouter from './routes/auth.js';
 import auditRouter from './routes/audit.js';
 import pilotRouter from './routes/pilot.js';
+import masterRouter from './routes/master.js';
+import adminRouter from './routes/admin.js';
+import referenceDataRouter from './routes/reference-data.js';
 
 // Load environment variables
 dotenv.config();
@@ -22,6 +25,9 @@ app.use('/api/auth', authRouter);
 app.use('/api/flights', flightsRouter);
 app.use('/api/audit', auditRouter);
 app.use('/api/pilot', pilotRouter);
+app.use('/api/master', masterRouter);
+app.use('/api/admin', adminRouter);
+app.use('/api', referenceDataRouter);
 
 // Health check
 app.get('/api/health', async (req, res) => {

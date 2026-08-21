@@ -33,6 +33,16 @@ export default async function handler(req, res) {
       )
     `);
 
+    // Migrar tabela pilots existente (schema antigo) para o multitenant
+    await query(`ALTER TABLE pilots ADD COLUMN IF NOT EXISTS tenant_id UUID`);
+    await query(`ALTER TABLE pilots ADD COLUMN IF NOT EXISTS user_id UUID`);
+    await query(`ALTER TABLE pilots ADD COLUMN IF NOT EXISTS cpf VARCHAR(20)`);
+    await query(`ALTER TABLE pilots ADD COLUMN IF NOT EXISTS phone VARCHAR(30)`);
+    await query(`ALTER TABLE pilots ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE`);
+    await query(`ALTER TABLE pilots ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()`);
+    await query(`ALTER TABLE pilots ALTER COLUMN license_number DROP NOT NULL`);
+    await query(`ALTER TABLE pilots ALTER COLUMN license_type DROP NOT NULL`);
+
     if (req.method === 'GET') {
       const result = await query(
         `SELECT p.*, u.username

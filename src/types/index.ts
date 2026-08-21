@@ -1,5 +1,6 @@
 // ============================================================
 // DIÁRIO DE BORDO DIGITAL - TIPOS ANAC/ICAO
+// Conforme Portaria nº 3.220/SPO/SAR e Resolução nº 458/2017
 // ============================================================
 
 /**
@@ -21,6 +22,11 @@ export type FlightType =
   | 'other';        // Outro
 
 /**
+ * Regras de voo (ANAC obrigatório)
+ */
+export type FlightRules = 'IFR' | 'VFR' | 'YVFR' | 'ZIFR';
+
+/**
  * Tipo de operação (dia/noite)
  */
 export type FlightTimeType = 'day' | 'night';
@@ -37,52 +43,86 @@ export type FlightStatus = 'planned' | 'in_progress' | 'completed' | 'cancelled'
 
 /**
  * Registro de um voo individual
- * Conforme campos obrigatórios ANAC (similar ao logbook físico)
+ * Conforme campos obrigatórios ANAC (Portaria 3.220/SPO/SAR)
+ * e exigências de integridade (Resolução 458/2017)
  */
 export interface FlightRecord {
   id: string;
+  tenantId?: string;
   userId: string;
   
-  // Data e hora
-  date: string;                    // YYYY-MM-DD
-  departureTime: string;           // HH:MM (UTC)
-  arrivalTime: string;             // HH:MM (UTC)
+  // ── Dados de Identificação do Voo (ANAC obrigatório) ──
+  flightNumber?: string;              // Número do voo
+  flightRules?: FlightRules;           // Regras de voo (IFR/VFR)
   
-  // Aeronave
-  aircraftType: string;            // Ex: Cessna 172, Piper PA-28
-  registration: string;            // Matrícula da aeronave (ex: PT-ABC)
+  // ── Data e hora (ANAC obrigatório) ──
+  date: string;                       // YYYY-MM-DD
+  departureTime: string;              // HH:MM (UTC)
+  arrivalTime: string;                // HH:MM (UTC)
   
-  // Aeródromos
-  departureAirport: string;        // Código ICAO (ex: SBGR)
-  arrivalAirport: string;          // Código ICAO (ex: SBGL)
+  // ── Aeronave (ANAC obrigatório) ──
+  aircraftType: string;               // Tipo/certificação (ex: Cessna 172)
+  registration: string;               // Matrícula (ex: PT-ABC)
   
-  // Tipos de voo (podem ser múltiplos)
+  // ── Aeródromos (ANAC obrigatório) ──
+  departureAirport: string;           // ICAO origem (ex: SBGR)
+  arrivalAirport: string;             // ICAO destino (ex: SBGL)
+  alternatedAirport?: string;         // ICAO alternado
+  
+  // ── Tipos de voo (podem ser múltiplos) ──
   flightTypes: FlightType[];
   
-  // Tempo de voo (em horas e minutos)
+  // ── Tempo de voo (ANAC obrigatório) ──
   flightTime: {
-    day: number;                   // Tempo em horas (dia)
-    night: number;                 // Tempo em horas (noite)
-    instrument: number;            // Tempo por instrumentos
-    crossCountry: number;          // Tempo entre(cidades)
+    day: number;                      // Tempo dia (horas decimais)
+    night: number;                    // Tempo noite (horas decimais)
+    instrument: number;               // Tempo por instrumentos
+    crossCountry: number;             // Tempo entre(cidades)
   };
   
-  // Pilotagem
-  pilotInCommand: string;          // Nome do PIC (se aplicável)
-  copilot: string;                 // Nome do SIC (se aplicável)
-  instructor: string;              // Nome do instrutor (se aplicável)
+  // ── Distância (ANAC) ──
+  totalDistance?: number;              // Distância total (NM)
   
-  // Pousos
+  // ── Combustível (ANAC) ──
+  fuelType?: string;                  // Tipo de combustível (ex: 100LL, Jet-A1)
+  fuelQuantityDeparture?: number;     // Qtd combustível na decolagem (litros/kg)
+  fuelQuantityArrival?: number;       // Qtd combustível no pouso (litros/kg)
+  
+  // ── Passageiros ──
+  passengersCount?: number;           // Nº de passageiros
+  
+  // ── Tripulação (ANAC obrigatório) ──
+  pilotInCommand: string;             // Nome do PIC
+  pilotInCommandLicense?: string;     // Nº licença ANAC do PIC
+  copilot: string;                    // Nome do SIC
+  copilotLicense?: string;            // Nº licença ANAC do SIC
+  instructor: string;                 // Nome do instrutor
+  
+  // ── Pousos (ANAC obrigatório) ──
   landings: {
-    day: number;                   // Pousos de dia
-    night: number;                 // Pousos de noite
+    day: number;                      // Pousos de dia
+    night: number;                    // Pousos de noite
   };
   
-  // Observações
+  // ── Condições meteorológicas (ANAC) ──
+  metarDeparture?: string;            // METAR na decolagem
+  metarArrival?: string;              // METAR no pouso
+  
+  // ── NOTAMs e obstáculos (ANAC) ──
+  notams?: string;                    // NOTAMs relevantes ao voo
+  obstacles?: string;                 // Obstáculos notáveis
+  
+  // ── Observações (ANAC) ──
   remarks: string;
   
-  // Status
+  // ── Status ──
   status: FlightStatus;
+  
+  // ── Integridade e auditoria (Resolução 458/2017) ──
+  integrityHash?: string;             // SHA-256 hash do registro
+  signed?: boolean;                   // Se o registro foi assinado digitalmente
+  locked?: boolean;                   // Imutável após assinatura
+  
   createdAt: string;
   updatedAt: string;
 }
@@ -116,10 +156,10 @@ export interface FlightStats {
 export interface Pilot {
   id: string;
   name: string;
-  licenseNumber: string;           // Número da licença ANAC
-  licenseType: string;             // Tipo de licença (PPL, CPL, ATPL)
-  medicalClass: string;            // Classe do certificado médico
-  medicalExpiry: string;           // Data de validade do médico
+  licenseNumber: string;              // Número da licença ANAC
+  licenseType: string;                // Tipo de licença (PPL, CPL, ATPL)
+  medicalClass: string;               // Classe do certificado médico
+  medicalExpiry: string;              // Data de validade do médico
   email: string;
   createdAt: string;
 }
@@ -127,12 +167,26 @@ export interface Pilot {
 /**
  * Dados para criar um novo voo
  */
-export type CreateFlightDTO = Omit<FlightRecord, 'id' | 'createdAt' | 'updatedAt'>;
+export type CreateFlightDTO = Omit<FlightRecord, 'id' | 'createdAt' | 'updatedAt' | 'integrityHash' | 'signed' | 'locked'>;
 
 /**
  * Dados para atualizar um voo
  */
 export type UpdateFlightDTO = Partial<CreateFlightDTO>;
+
+/**
+ * Log de correção (quando um voo assinado é alterado)
+ */
+export interface CorrectionEntry {
+  id: string;
+  flightId: string;
+  userId: string;
+  field: string;
+  oldValue: string;
+  newValue: string;
+  reason: string;
+  correctedAt: string;
+}
 
 /**
  * Configurações do aplicativo
