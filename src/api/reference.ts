@@ -13,6 +13,13 @@ export interface AircraftTypeOption {
   manufacturer: string;
 }
 
+export interface RegistrationOption {
+  registration: string;
+  aircraftType: string;
+  model: string;
+  manufacturer: string;
+}
+
 /**
  * Busca aeródromos brasileiros (dados OurAirports) por ICAO, nome ou cidade
  */
@@ -29,6 +36,16 @@ export async function searchAirports(q: string): Promise<AirportOption[]> {
 export async function searchAircraftTypes(q: string): Promise<AircraftTypeOption[]> {
   const response = await fetch(`${API_BASE}/aircraft-types?q=${encodeURIComponent(q)}`);
   if (!response.ok) throw new Error('Erro ao buscar tipos de aeronave');
+  const json = await response.json();
+  return json.data || [];
+}
+
+/**
+ * Busca matrículas de aeronaves (cadastradas + histórico de voos) por prefixo
+ */
+export async function searchRegistrations(q: string): Promise<RegistrationOption[]> {
+  const response = await fetch(`${API_BASE}/registrations?q=${encodeURIComponent(q)}`);
+  if (!response.ok) throw new Error('Erro ao buscar matrículas');
   const json = await response.json();
   return json.data || [];
 }

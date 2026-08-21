@@ -66,4 +66,67 @@ router.get('/aircraft-types', (req, res) => {
   return res.json({ data: results });
 });
 
+// Busca de matrículas de aeronaves (registradas + histórico de voos)
+router.get('/registrations', async (req, res) => {
+  try {
+    const q = (req.query.q || '').toString().trim().toUpperCase();
+
+    if (!q || q.length < 2) {
+      return res.json({ data: [] });
+    }
+
+    // Buscar de aeronaves cadastradas pelo admin
+    let aircraftResults: any[] = [];
+    try {
+      aircraftResults = await (await import('../lib/db.js')).query(
+        `SELECT DISTINCT registration, type as aircraft_type, model, manufacturer
+         FROM aircrafts
+         WHERE registration ILIKE $1 AND active = TRUE
+         ORDER BY registration ASC
+         LIMIT 15`,
+        [`%${q}%`]
+      );
+    } catch {
+      // Tabela aircrafts pode não existir ainda
+    }
+
+    // Buscar de voos anteriores
+    let flightResults: any[] = [];
+    try {
+      flightResults = await (await import('../lib/db.js')).query(
+        `SELECT DISTINCT registration, aircraft_type
+         FROM flights
+         WHERE registration ILIKE $1
+         ORDER BY registration ASC
+         LIMIT 15`,
+        [`%${q}%`]
+      );
+    } catch {
+      // Tabela flights pode não ter sido criada ainda
+    }
+
+    // Combinar resultados, removendo duplicatas
+    const seen = new Set<string>();
+    const results: any[] = [];
+
+    for (const r of [...aircraftResults, ...flightResults]) {
+      const reg = r.registration?.toUpperCase();
+      if (reg && !seen.has(reg)) {
+        seen.add(reg);
+        results.push({
+          registration: reg,
+          aircraftType: r.aircraft_type || r.type || '',
+          model: r.model || '',
+          manufacturer: r.manufacturer || '',
+        });
+      }
+    }
+
+    return res.json({ data: results.slice(0, 20) });
+  } catch (error) {
+    console.error('Search registrations error:', error);
+    return res.status(500).json({ error: 'Erro ao buscar matrículas', data: [] });
+  }
+});
+
 export default router;

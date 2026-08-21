@@ -3,7 +3,7 @@ import { Save, X, AlertCircle } from 'lucide-react';
 import type { FlightRecord, FlightType, CreateFlightDTO } from '../types';
 import { flightUtils } from '../api/flights';
 import SearchableInput from './SearchableInput';
-import { searchAirports, searchAircraftTypes } from '../api/reference';
+import { searchAirports, searchAircraftTypes, searchRegistrations } from '../api/reference';
 
 interface FlightFormProps {
   initialData?: FlightRecord;
@@ -222,13 +222,14 @@ export default function FlightForm({ initialData, onSubmit, onCancel, isLoading 
           </div>
           <div>
             <label className="block text-sm font-medium mb-2">Matrícula (PT-XXX) *</label>
-            <input
-              type="text"
+            <SearchableInput
               value={formData.registration}
-              onChange={e => setFormData(prev => ({ ...prev, registration: e.target.value.toUpperCase() }))}
-              placeholder="Ex: PT-ABC"
-              className="w-full"
-              maxLength={6}
+              onChange={value => setFormData(prev => ({ ...prev, registration: value.toUpperCase() }))}
+              searchFn={searchRegistrations}
+              getLabel={option => option.registration}
+              getSubLabel={option => [option.aircraftType, option.manufacturer].filter(Boolean).join(' · ')}
+              placeholder="Busque por matrícula (ex: PT-ABC)"
+              minQuery={2}
             />
             {errors.registration && <p className="text-red-400 text-sm mt-1">{errors.registration}</p>}
           </div>
