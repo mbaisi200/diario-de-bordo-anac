@@ -12,39 +12,11 @@ import {
   Stamp
 } from 'lucide-react';
 import type { FlightRecord } from '../types';
-import { flightUtils } from '../api/flights';
+import { flightApi, flightUtils } from '../api/flights';
 import { useAuth } from '../contexts/AuthContext';
 import SignaturePad from '../components/SignaturePad';
 import AuditLog from '../components/AuditLog';
 import ApprovalStamp from '../components/ApprovalStamp';
-
-// Mock data for demo
-const mockFlight: FlightRecord = {
-  id: '1',
-  userId: 'default',
-  date: '2024-01-15',
-  departureTime: '14:00',
-  arrivalTime: '16:30',
-  aircraftType: 'Cessna 172 Skyhawk',
-  registration: 'PT-ABC',
-  departureAirport: 'SBGR',
-  arrivalAirport: 'SBGL',
-  flightTypes: ['pic', 'cross_country'],
-  flightTime: { day: 2.5, night: 0, instrument: 0, crossCountry: 2.5 },
-  pilotInCommand: 'João Silva',
-  pilotInCommandLicense: 'PPL-12345',
-  copilot: '',
-  copilotLicense: '',
-  instructor: '',
-  landings: { day: 2, night: 0 },
-  remarks: 'Voo de ida ao RJ. Boas condições meteorológicas. Tráfego intenso no TMA do Galeão. Pouso na RWY 10.',
-  status: 'completed',
-  signed: false,
-  locked: false,
-  flightRules: 'VFR',
-  createdAt: '2024-01-15T10:00:00Z',
-  updatedAt: '2024-01-15T16:30:00Z',
-} as FlightRecord;
 
 const flightTypeLabels: Record<string, string> = {
   dual: 'Duplo Comando',
@@ -57,6 +29,8 @@ const flightTypeLabels: Record<string, string> = {
   ipc: 'Instrument Proficiency Check',
   bfr: 'Biennial Flight Review',
   ferry: 'Ferry Flight',
+  night: 'Noturno',
+  ifr: 'IFR',
   other: 'Outro',
 };
 
@@ -68,54 +42,46 @@ export default function FlightDetails() {
   const [isLoading, setIsLoading] = useState(true);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [showApprovalStamp, setShowApprovalStamp] = useState(false);
-  const [signatures, setSignatures] = useState<any[]>([]);
   const [approvals, setApprovals] = useState<any[]>([]);
 
   useEffect(() => {
-    // In a real app, this would fetch from API
-    // const data = await flightApi.getFlight(id!);
-    // setFlight(data);
-    
-    // For demo, use mock data
-    setTimeout(() => {
-      setFlight(mockFlight);
-      setIsLoading(false);
-    }, 300);
+    if (id) loadFlight(id);
   }, [id]);
 
+  const loadFlight = async (flightId: string) => {
+    try {
+      setIsLoading(true);
+      const data = await flightApi.getFlight(flightId);
+      setFlight(data);
+    } catch (e) {
+      alert('Voo não encontrado');
+      navigate('/');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleDelete = async () => {
+    if (!id) return;
     if (window.confirm('Tem certeza que deseja excluir este voo?')) {
       try {
-        // In a real app, this would call the API
-        // await flightApi.deleteFlight(id!);
+        await flightApi.deleteFlight(id);
         alert('Voo excluído com sucesso!');
         navigate('/flights');
-      } catch (error) {
-        alert('Erro ao excluir voo');
+      } catch (error: any) {
+        alert(error.message || 'Erro ao excluir voo');
       }
     }
   };
 
-  const handleSign = async (signatureData: string) => {
+  const handleSign = async (_signatureData: string) => {
     if (!user || !flight) return;
     
     try {
-      const response = await fetch('/api/audit/signatures', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          flightId: flight.id,
-          userId: user.id,
-          signatureType: 'pilot',
-          signatureData,
-        }),
-      });
-
-      if (!response.ok) throw new Error('Erro ao assinar');
-      
+      await flightApi.signFlight(flight.id, user.name);
       alert('Voo assinado com sucesso!');
       setShowSignaturePad(false);
-      setSignatures(prev => [...prev, { user_name: user.name, signature_type: 'pilot', signed_at: new Date().toISOString() }]);
+      loadFlight(flight.id);
     } catch (error) {
       alert('Erro ao assinar voo');
     }
@@ -203,22 +169,6 @@ export default function FlightDetails() {
             <Stamp className="w-5 h-5 mr-2" />
             Aprovar
           </button>
-          <button
-            onClick={handleDelete}
-            className="btn-danger inline-flex items-center"
-          >
-            <Trash2 className="w-5 h-5 mr-2" />
-            Excluir
-          </button>
-        </div>
-        <div className="flex gap-2">
-          <Link
-            to={`/edit-flight/${flight.id}`}
-            className="btn-secondary inline-flex items-center"
-          >
-            <Edit className="w-5 h-5 mr-2" />
-            Editar
-          </Link>
           <button
             onClick={handleDelete}
             className="btn-danger inline-flex items-center"
@@ -516,29 +466,6 @@ export default function FlightDetails() {
           </div>
         </div>
       </div>
-
-      {/* Signatures */}
-      {signatures.length > 0 && (
-        <div className="card">
-          <h3 className="text-lg font-semibold mb-4 text-purple-400">
-            <Pen className="w-5 h-5 inline mr-2" />
-            Assinaturas Digitais
-          </h3>
-          <div className="space-y-3">
-            {signatures.map((sig, index) => (
-              <div key={index} className="flex items-center gap-3 p-3 bg-aviation-dark rounded-lg">
-                <Pen className="w-5 h-5 text-purple-400" />
-                <div>
-                  <p className="font-medium">{sig.user_name}</p>
-                  <p className="text-sm text-gray-400">
-                    {sig.signature_type} • {new Date(sig.signed_at).toLocaleString('pt-BR')}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Approvals */}
       {approvals.length > 0 && (

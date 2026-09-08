@@ -7,6 +7,7 @@
   "rewrites": [
     { "source": "/api/auth/(.*)", "destination": "/api/auth/$1" },
     { "source": "/api/flights/(.*)", "destination": "/api/flights/$1" },
+    { "source": "/api/flights", "destination": "/api/flights/index.js" },
     { "source": "/api/audit/(.*)", "destination": "/api/audit/$1" },
     { "source": "/api/pilot/(.*)", "destination": "/api/pilot/$1" },
     { "source": "/api/health", "destination": "/api/health.js" },

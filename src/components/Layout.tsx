@@ -11,7 +11,9 @@ import {
   LogOut,
   User,
   Shield,
-  Building2
+  Building2,
+  Scale,
+  BookOpen
 } from 'lucide-react';
 import { useState } from 'react';
 import MobileNav from './MobileNav';
@@ -33,6 +35,8 @@ export default function Layout({ children }: LayoutProps) {
     { path: '/', label: 'Dashboard', icon: Home },
     { path: '/new-flight', label: 'Novo Voo', icon: PlusCircle },
     { path: '/flights', label: 'Meus Voos', icon: List },
+    { path: '/volumes', label: 'Volumes', icon: BookOpen },
+    { path: '/compliance-rules', label: 'Regras IAC', icon: Scale },
     { path: '/profile', label: 'Perfil', icon: User },
     ...(user?.role === 'master'
       ? [{ path: '/master', label: 'Painel Master', icon: Shield }]

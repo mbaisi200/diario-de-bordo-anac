@@ -3,96 +3,9 @@ import { Link } from 'react-router-dom';
 import { PlusCircle, Download, Upload, FileText } from 'lucide-react';
 import type { FlightRecord } from '../types';
 import FlightList from '../components/FlightList';
+import { flightApi } from '../api/flights';
 import { pilotApi, PilotProfile } from '../api/pilot';
 import { generateFlightReport, downloadPdf } from '../utils/pdfReport';
-
-// Mock data for demo
-const mockFlights: FlightRecord[] = [
-  {
-    id: '1',
-    userId: 'default',
-    date: '2024-01-15',
-    departureTime: '14:00',
-    arrivalTime: '16:30',
-    aircraftType: 'Cessna 172 Skyhawk',
-    registration: 'PT-ABC',
-    departureAirport: 'SBGR',
-    arrivalAirport: 'SBGL',
-    flightTypes: ['pic', 'cross_country'],
-    flightTime: { day: 2.5, night: 0, instrument: 0, crossCountry: 2.5 },
-    pilotInCommand: 'João Silva',
-    copilot: '',
-    instructor: '',
-    landings: { day: 2, night: 0 },
-    remarks: 'Voo de ida ao RJ. Boas condições meteorológicas.',
-    status: 'completed',
-    createdAt: '2024-01-15T10:00:00Z',
-    updatedAt: '2024-01-15T16:30:00Z',
-  },
-  {
-    id: '2',
-    userId: 'default',
-    date: '2024-01-10',
-    departureTime: '08:00',
-    arrivalTime: '10:00',
-    aircraftType: 'Piper PA-28 Cherokee',
-    registration: 'PT-DEF',
-    departureAirport: 'SBSP',
-    arrivalAirport: 'SBKP',
-    flightTypes: ['dual', 'instruction'],
-    flightTime: { day: 2.0, night: 0, instrument: 0, crossCountry: 0 },
-    pilotInCommand: 'João Silva',
-    copilot: '',
-    instructor: 'Carlos Santos',
-    landings: { day: 4, night: 0 },
-    remarks: 'Prática de circuito de tráfego e pousos.',
-    status: 'completed',
-    createdAt: '2024-01-10T08:00:00Z',
-    updatedAt: '2024-01-10T10:00:00Z',
-  },
-  {
-    id: '3',
-    userId: 'default',
-    date: '2024-01-05',
-    departureTime: '19:00',
-    arrivalTime: '21:00',
-    aircraftType: 'Cessna 172 Skyhawk',
-    registration: 'PT-ABC',
-    departureAirport: 'SBGR',
-    arrivalAirport: 'SBCF',
-    flightTypes: ['pic', 'night'],
-    flightTime: { day: 0, night: 2.0, instrument: 1.5, crossCountry: 2.0 },
-    pilotInCommand: 'João Silva',
-    copilot: '',
-    instructor: '',
-    landings: { day: 0, night: 2 },
-    remarks: 'Voo noturno para Campinas. IFR parcial.',
-    status: 'completed',
-    createdAt: '2024-01-05T19:00:00Z',
-    updatedAt: '2024-01-05T21:00:00Z',
-  },
-  {
-    id: '4',
-    userId: 'default',
-    date: '2024-01-02',
-    departureTime: '10:00',
-    arrivalTime: '11:30',
-    aircraftType: 'Cessna 172 Skyhawk',
-    registration: 'PT-ABC',
-    departureAirport: 'SBGR',
-    arrivalAirport: 'SBRP',
-    flightTypes: ['solo'],
-    flightTime: { day: 1.5, night: 0, instrument: 0, crossCountry: 0 },
-    pilotInCommand: 'João Silva',
-    copilot: '',
-    instructor: '',
-    landings: { day: 3, night: 0 },
-    remarks: 'Primeiro voo solo. Circuito de tráfego em Ribeirão Preto.',
-    status: 'completed',
-    createdAt: '2024-01-02T10:00:00Z',
-    updatedAt: '2024-01-02T11:30:00Z',
-  },
-];
 
 export default function FlightListPage() {
   const [flights, setFlights] = useState<FlightRecord[]>([]);
@@ -100,40 +13,57 @@ export default function FlightListPage() {
   const [pilotProfile, setPilotProfile] = useState<PilotProfile | null>(null);
 
   useEffect(() => {
-    // In a real app, this would fetch from API
-    // const data = await flightApi.getFlights();
-    // setFlights(data);
-    
-    // For demo, use mock data
-    setTimeout(() => {
-      setFlights(mockFlights);
-      setIsLoading(false);
-    }, 500);
-
-    // Fetch pilot profile
-    pilotApi.getProfile().then(profile => setPilotProfile(profile));
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const [flightsData, profile] = await Promise.all([
+        flightApi.getFlights(),
+        pilotApi.getProfile().catch(() => null),
+      ]);
+      setFlights(flightsData);
+      setPilotProfile(profile);
+    } catch (e) {
+      console.error('Erro ao carregar voos:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleExport = async () => {
     try {
-      // In a real app, this would call the API
-      // const blob = await flightApi.exportData();
-      // const url = URL.createObjectURL(blob);
-      // const a = document.createElement('a');
-      // a.href = url;
-      // a.download = `diario-de-bordo-${new Date().toISOString().split('T')[0]}.json`;
-      // a.click();
-      
-      // For demo, just alert
-      alert('Dados exportados com sucesso!');
+      const blob = await flightApi.exportData();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `diario-de-bordo-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
     } catch (error) {
       alert('Erro ao exportar dados');
     }
   };
 
   const handleImport = () => {
-    // This would open a file picker in a real app
-    alert('Funcionalidade de importação será implementada');
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        await flightApi.importData(data);
+        alert('Dados importados com sucesso!');
+        loadData();
+      } catch (err) {
+        alert('Erro ao importar dados');
+      }
+    };
+    input.click();
   };
 
   const handleExportPdf = () => {

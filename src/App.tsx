@@ -10,6 +10,8 @@ import FlightDetails from './pages/FlightDetails';
 import PilotProfilePage from './pages/PilotProfile';
 import MasterAdmins from './pages/MasterAdmins';
 import AdminPanel from './pages/AdminPanel';
+import ComplianceRules from './pages/ComplianceRules';
+import VolumesPage from './pages/VolumesPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -119,6 +121,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Layout><PilotProfilePage /></Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/compliance-rules"
+        element={
+          <ProtectedRoute>
+            <Layout><ComplianceRules /></Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/volumes"
+        element={
+          <ProtectedRoute>
+            <Layout><VolumesPage /></Layout>
           </ProtectedRoute>
         }
       />

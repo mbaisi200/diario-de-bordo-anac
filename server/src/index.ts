@@ -9,6 +9,7 @@ import pilotRouter from './routes/pilot.js';
 import masterRouter from './routes/master.js';
 import adminRouter from './routes/admin.js';
 import referenceDataRouter from './routes/reference-data.js';
+import backupRouter from './routes/backup.js';
 
 // Load environment variables
 dotenv.config();
@@ -27,6 +28,7 @@ app.use('/api/audit', auditRouter);
 app.use('/api/pilot', pilotRouter);
 app.use('/api/master', masterRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/backup', backupRouter);
 app.use('/api', referenceDataRouter);
 
 // Health check

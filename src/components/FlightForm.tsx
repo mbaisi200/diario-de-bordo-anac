@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Save, X, AlertCircle } from 'lucide-react';
-import type { FlightRecord, FlightType, CreateFlightDTO } from '../types';
+import { Save, X, AlertCircle, Plus, Trash2 } from 'lucide-react';
+import type { FlightRecord, FlightType, FlightNature, CrewFunction, CrewMember, CreateFlightDTO } from '../types';
+import { CREW_FUNCTION_LABELS } from '../types';
 import { flightUtils } from '../api/flights';
 import SearchableInput from './SearchableInput';
 import { searchAirports, searchAircraftTypes, searchRegistrations } from '../api/reference';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface FlightFormProps {
   initialData?: FlightRecord;
@@ -26,29 +28,53 @@ const flightTypeOptions: { value: FlightType; label: string }[] = [
   { value: 'other', label: 'Outro' },
 ];
 
+const flightNatureOptions: { value: FlightNature; label: string; desc: string }[] = [
+  { value: 'PV', label: 'PV', desc: 'Privado' },
+  { value: 'FR', label: 'FR', desc: 'Fretamento' },
+  { value: 'TN', label: 'TN', desc: 'Treinamento' },
+  { value: 'TR', label: 'TR', desc: 'Traslado' },
+  { value: 'CQ', label: 'CQ', desc: 'Exame Prático' },
+  { value: 'LR', label: 'LR', desc: 'Linha Regular' },
+  { value: 'SA', label: 'SA', desc: 'Serviço Aéreo Esp.' },
+  { value: 'EX', label: 'EX', desc: 'Experiência' },
+  { value: 'AE', label: 'AE', desc: 'Aut. Especial' },
+  { value: 'LX', label: 'LX', desc: 'Linha Não Regular' },
+  { value: 'LS', label: 'LS', desc: 'Linha Suplementar' },
+  { value: 'IN', label: 'IN', desc: 'Instrução INSPAC' },
+];
+
 export default function FlightForm({ initialData, onSubmit, onCancel, isLoading }: FlightFormProps) {
+  const { isDark } = useTheme();
   const [formData, setFormData] = useState<CreateFlightDTO>(() => {
     if (initialData) {
       return {
         userId: initialData.userId,
         tenantId: initialData.tenantId,
+        volumeId: initialData.volumeId,
+        sequentialNumber: initialData.sequentialNumber,
         flightNumber: initialData.flightNumber,
         flightRules: initialData.flightRules || 'VFR',
+        flightNature: initialData.flightNature,
         date: initialData.date,
         departureTime: initialData.departureTime,
         arrivalTime: initialData.arrivalTime,
         aircraftType: initialData.aircraftType,
         registration: initialData.registration,
+        aircraftSerialNumber: initialData.aircraftSerialNumber,
+        registrationCategory: initialData.registrationCategory,
         departureAirport: initialData.departureAirport,
         arrivalAirport: initialData.arrivalAirport,
         alternatedAirport: initialData.alternatedAirport,
         flightTypes: initialData.flightTypes,
         flightTime: initialData.flightTime,
+        cycles: initialData.cycles,
         totalDistance: initialData.totalDistance,
         fuelType: initialData.fuelType,
         fuelQuantityDeparture: initialData.fuelQuantityDeparture,
         fuelQuantityArrival: initialData.fuelQuantityArrival,
         passengersCount: initialData.passengersCount,
+        cargoWeight: initialData.cargoWeight,
+        crew: initialData.crew || [],
         pilotInCommand: initialData.pilotInCommand,
         pilotInCommandLicense: initialData.pilotInCommandLicense,
         copilot: initialData.copilot,
@@ -61,11 +87,14 @@ export default function FlightForm({ initialData, onSubmit, onCancel, isLoading 
         obstacles: initialData.obstacles,
         remarks: initialData.remarks,
         status: initialData.status,
+        mechanicReleaseCode: initialData.mechanicReleaseCode,
+        mechanicReleaseSignature: initialData.mechanicReleaseSignature,
       };
     }
     return {
       userId: 'default',
       flightRules: 'VFR',
+      flightNature: 'PV' as FlightNature,
       date: new Date().toISOString().split('T')[0],
       departureTime: '',
       arrivalTime: '',
@@ -75,9 +104,11 @@ export default function FlightForm({ initialData, onSubmit, onCancel, isLoading 
       arrivalAirport: '',
       flightTypes: [],
       flightTime: { day: 0, night: 0, instrument: 0, crossCountry: 0 },
+      cycles: { partial: 0, total: 0 },
       pilotInCommand: '',
       copilot: '',
       instructor: '',
+      crew: [],
       landings: { day: 0, night: 0 },
       passengersCount: 0,
       remarks: '',
@@ -143,6 +174,35 @@ export default function FlightForm({ initialData, onSubmit, onCancel, isLoading 
     setFormData(prev => ({
       ...prev,
       landings: { ...prev.landings, [field]: numValue },
+    }));
+  };
+
+  const addCrewMember = () => {
+    setFormData(prev => ({
+      ...prev,
+      crew: [...(prev.crew || []), { name: '', role: 'PIC' as CrewFunction, anacCode: '', licenseNumber: '' }],
+    }));
+  };
+
+  const updateCrewMember = (index: number, field: keyof CrewMember, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      crew: (prev.crew || []).map((m, i) => (i === index ? { ...m, [field]: value } : m)),
+    }));
+  };
+
+  const removeCrewMember = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      crew: (prev.crew || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  const updateCycles = (field: 'partial' | 'total', value: string) => {
+    const numValue = parseInt(value) || 0;
+    setFormData(prev => ({
+      ...prev,
+      cycles: { ...prev.cycles!, [field]: numValue },
     }));
   };
 
@@ -233,13 +293,33 @@ export default function FlightForm({ initialData, onSubmit, onCancel, isLoading 
             />
             {errors.registration && <p className="text-red-400 text-sm mt-1">{errors.registration}</p>}
           </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Nº de Série</label>
+            <input
+              type="text"
+              value={formData.aircraftSerialNumber || ''}
+              onChange={e => setFormData(prev => ({ ...prev, aircraftSerialNumber: e.target.value }))}
+              placeholder="Número de série da aeronave"
+              className="w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Categoria de Registro</label>
+            <input
+              type="text"
+              value={formData.registrationCategory || ''}
+              onChange={e => setFormData(prev => ({ ...prev, registrationCategory: e.target.value }))}
+              placeholder="Ex: Standart, Experimental"
+              className="w-full"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Flight Rules + Number (ANAC) */}
+      {/* Flight Rules + Number + Nature (ANAC) */}
       <div className="card">
         <h3 className="text-lg font-semibold mb-4 text-aviation-accent">📋 Regras de Voo</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium mb-2">Regras de Voo *</label>
             <select
@@ -262,6 +342,19 @@ export default function FlightForm({ initialData, onSubmit, onCancel, isLoading 
               placeholder="Ex: NCT2468"
               className="w-full"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Natureza do Voo *</label>
+            <select
+              value={formData.flightNature || ''}
+              onChange={e => setFormData(prev => ({ ...prev, flightNature: e.target.value as FlightNature || undefined }))}
+              className="w-full"
+            >
+              <option value="">Selecione...</option>
+              {flightNatureOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label} - {opt.desc}</option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
@@ -401,6 +494,32 @@ export default function FlightForm({ initialData, onSubmit, onCancel, isLoading 
           </div>
         </div>
         
+        {/* Cycles */}
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Ciclos Parciais (este voo)</label>
+            <input
+              type="number"
+              min="0"
+              value={formData.cycles?.partial || ''}
+              onChange={e => updateCycles('partial', e.target.value)}
+              placeholder="0"
+              className="w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Ciclos Totais Acumulados</label>
+            <input
+              type="number"
+              min="0"
+              value={formData.cycles?.total || ''}
+              onChange={e => updateCycles('total', e.target.value)}
+              placeholder="0"
+              className="w-full"
+            />
+          </div>
+        </div>
+
         {/* Total Display */}
         <div className="mt-4 p-3 bg-slate-100 rounded-xl flex items-center justify-between">
           <span className="text-slate-500">Tempo Total:</span>
@@ -441,7 +560,7 @@ export default function FlightForm({ initialData, onSubmit, onCancel, isLoading 
 
       {/* Fuel and Distance (ANAC) */}
       <div className="card">
-        <h3 className="text-lg font-semibold mb-4 text-aviation-accent">⛽ Combustível e Passageiros</h3>
+        <h3 className="text-lg font-semibold mb-4 text-aviation-accent">⛽ Combustível, Carga e Passageiros</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div>
             <label className="block text-sm font-medium mb-2">Tipo de Combustível</label>
@@ -493,13 +612,33 @@ export default function FlightForm({ initialData, onSubmit, onCancel, isLoading 
               className="w-full"
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Peso da Carga (kg)</label>
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              value={formData.cargoWeight || ''}
+              onChange={e => setFormData(prev => ({ ...prev, cargoWeight: parseFloat(e.target.value) || undefined }))}
+              placeholder="Peso em kg"
+              className="w-full"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Crew Section (ANAC) */}
+      {/* Crew Section (ANAC) - Portaria 14.096/SPO/2024 */}
       <div className="card">
-        <h3 className="text-lg font-semibold mb-4 text-aviation-accent">👨‍✈️ Tripulação</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-aviation-accent">👨‍✈️ Tripulação</h3>
+          <button type="button" onClick={addCrewMember} className="btn-secondary text-sm">
+            <Plus className="w-4 h-4 inline mr-1" />
+            Adicionar Tripulante
+          </button>
+        </div>
+
+        {/* Quick fields for PIC/SIC/Instructor */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
           <div className="space-y-3">
             <div>
               <label className="block text-sm font-medium mb-2">Piloto em Comando (PIC) *</label>
@@ -555,6 +694,72 @@ export default function FlightForm({ initialData, onSubmit, onCancel, isLoading 
             />
           </div>
         </div>
+
+        {/* Detailed Crew Members (Portaria 14.096/SPO/2024) */}
+        {formData.crew && formData.crew.length > 0 && (
+          <div className={`border-t pt-4 ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+            <p className="text-xs text-slate-500 mb-3">
+              Tripulantes detalhados (conforme Portaria 14.096/SPO/2024):
+            </p>
+            {formData.crew.map((member, index) => (
+              <div key={index} className={`p-3 rounded-lg mb-2 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Nome *</label>
+                    <input
+                      type="text"
+                      value={member.name}
+                      onChange={e => updateCrewMember(index, 'name', e.target.value)}
+                      placeholder="Nome completo"
+                      className="w-full text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Função *</label>
+                    <select
+                      value={member.role}
+                      onChange={e => updateCrewMember(index, 'role', e.target.value)}
+                      className="w-full text-sm"
+                    >
+                      {Object.entries(CREW_FUNCTION_LABELS).map(([key, label]) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Código ANAC</label>
+                    <input
+                      type="text"
+                      value={member.anacCode || ''}
+                      onChange={e => updateCrewMember(index, 'anacCode', e.target.value)}
+                      placeholder="Ex: 4530"
+                      className="w-full text-sm"
+                    />
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium mb-1">Licença</label>
+                      <input
+                        type="text"
+                        value={member.licenseNumber || ''}
+                        onChange={e => updateCrewMember(index, 'licenseNumber', e.target.value)}
+                        placeholder="Nº licença"
+                        className="w-full text-sm"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeCrewMember(index)}
+                      className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* METAR / NOTAMs (ANAC) */}
@@ -610,10 +815,40 @@ export default function FlightForm({ initialData, onSubmit, onCancel, isLoading 
         <textarea
           value={formData.remarks}
           onChange={e => setFormData(prev => ({ ...prev, remarks: e.target.value }))}
-          placeholder="Adicione observações sobre o voo, condições meteorológicas, etc."
+          placeholder="Adicione observações sobre o voo, condições meteorológicas, ocorrências, etc."
           rows={4}
           className="w-full resize-none"
         />
+      </div>
+
+      {/* Mechanic Release (ANAC) */}
+      <div className="card">
+        <h3 className="text-lg font-semibold mb-4 text-aviation-accent">🔧 Liberação do Mecânico</h3>
+        <p className="text-xs text-slate-500 mb-3">
+          Conforme IAC 3151, Cap. 5 - Rubrica do mecânico responsável pela liberação da aeronave (RBAC 43)
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Código ANAC do Mecânico</label>
+            <input
+              type="text"
+              value={formData.mechanicReleaseCode || ''}
+              onChange={e => setFormData(prev => ({ ...prev, mechanicReleaseCode: e.target.value }))}
+              placeholder="Ex: 4530"
+              className="w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Rubrica do Mecânico</label>
+            <input
+              type="text"
+              value={formData.mechanicReleaseSignature || ''}
+              onChange={e => setFormData(prev => ({ ...prev, mechanicReleaseSignature: e.target.value }))}
+              placeholder="Assinatura/rubrica do mecânico"
+              className="w-full"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Validation Summary */}

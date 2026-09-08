@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { flightRepository, initializeDatabase } from '../database.js';
+import { sql } from '../lib/db.js';
 
 const router = Router();
 
@@ -13,6 +14,20 @@ router.use(async (req, res, next) => {
   }
   next();
 });
+
+/**
+ * Helper: log de auditoria para CRUD
+ */
+async function logAudit(userId: string, action: string, entityType: string, entityId: string, oldValues?: any, newValues?: any, ipAddress?: string) {
+  try {
+    await sql(`
+      INSERT INTO audit_log (id, user_id, action, entity_type, entity_id, old_values, new_values, ip_address)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `, [uuidv4(), userId, action, entityType, entityId, oldValues ? JSON.stringify(oldValues) : null, newValues ? JSON.stringify(newValues) : null, ipAddress || null]);
+  } catch (e) {
+    console.error('Audit log error:', e);
+  }
+}
 
 /**
  * GET /api/flights
@@ -90,53 +105,67 @@ router.get('/:id', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   try {
     const {
-      userId, tenantId,
-      flightNumber, flightRules,
+      userId, tenantId, volumeId,
+      flightNumber, flightRules, flightNature,
       date, departureTime, arrivalTime,
-      aircraftType, registration,
+      aircraftType, registration, aircraftSerialNumber, registrationCategory,
       departureAirport, arrivalAirport, alternatedAirport,
-      flightTypes, flightTime, totalDistance,
+      flightTypes, flightTime, cycles, totalDistance,
       fuelType, fuelQuantityDeparture, fuelQuantityArrival,
-      passengersCount,
+      passengersCount, cargoWeight,
       pilotInCommand, pilotInCommandLicense,
       copilot, copilotLicense, instructor,
-      landings, metarDeparture, metarArrival,
+      crew, landings, metarDeparture, metarArrival,
       notams, obstacles,
       remarks, status,
+      mechanicReleaseCode, mechanicReleaseSignature,
     } = req.body;
 
-    // Validate required fields per ANAC
     if (!date || !departureTime || !arrivalTime || !aircraftType || !registration || !departureAirport || !arrivalAirport) {
       res.status(400).json({ error: 'Campos obrigatórios não preenchidos (data, horários, aeronave, aeródromos)' });
       return;
     }
 
     const id = uuidv4();
+
+    // Numeração sequencial automática por volume
+    let sequentialNumber = null;
+    if (volumeId) {
+      sequentialNumber = await flightRepository.getNextSequentialNumber(volumeId);
+    }
+
     const flight = await flightRepository.create({
       userId: userId || 'default',
       tenantId,
+      volumeId,
       flightNumber,
       flightRules: flightRules || 'VFR',
+      flightNature,
       date,
       departureTime,
       arrivalTime,
       aircraftType,
       registration,
+      aircraftSerialNumber,
+      registrationCategory,
       departureAirport,
       arrivalAirport,
       alternatedAirport,
       flightTypes: flightTypes || [],
       flightTime: flightTime || { day: 0, night: 0, instrument: 0, crossCountry: 0 },
+      cycles,
       totalDistance,
       fuelType,
       fuelQuantityDeparture,
       fuelQuantityArrival,
       passengersCount,
+      cargoWeight,
       pilotInCommand: pilotInCommand || '',
       pilotInCommandLicense,
       copilot: copilot || '',
       copilotLicense,
       instructor: instructor || '',
+      crew: crew || [],
       landings: landings || { day: 0, night: 0 },
       metarDeparture,
       metarArrival,
@@ -144,7 +173,18 @@ router.post('/', async (req: Request, res: Response) => {
       obstacles,
       remarks: remarks || '',
       status: status || 'completed',
+      mechanicReleaseCode,
+      mechanicReleaseSignature,
     }, id);
+
+    // Atualizar sequential_number
+    if (sequentialNumber) {
+      await sql('UPDATE flights SET sequential_number = $1 WHERE id = $2', [sequentialNumber, id]);
+      (flight as any).sequential_number = sequentialNumber;
+    }
+
+    // Audit log
+    await logAudit(userId || 'default', 'CREATE', 'flight', id, null, { registration, date, departureAirport, arrivalAirport }, req.ip);
 
     res.status(201).json(flight);
   } catch (error) {
@@ -159,18 +199,21 @@ router.post('/', async (req: Request, res: Response) => {
  */
 router.put('/:id', async (req: Request, res: Response) => {
   try {
-    // Check if flight is locked
     const existing = await flightRepository.getById(req.params.id);
     if (existing?.locked) {
-      res.status(403).json({ error: 'Voo bloqueado: registro assinado e imutável' });
+      res.status(403).json({ error: 'Voo bloqueado: registro assinado e imutável (Res. 458/2017)' });
       return;
     }
 
+    const oldValues = existing ? { date: existing.date, registration: existing.registration } : null;
     const flight = await flightRepository.update(req.params.id, req.body, req.body.userId);
     if (!flight) {
       res.status(404).json({ error: 'Voo não encontrado' });
       return;
     }
+
+    await logAudit(req.body.userId || 'default', 'UPDATE', 'flight', req.params.id, oldValues, { date: flight.date, registration: flight.registration }, req.ip);
+
     res.json(flight);
   } catch (error) {
     console.error('Error updating flight:', error);
@@ -184,11 +227,21 @@ router.put('/:id', async (req: Request, res: Response) => {
  */
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
+    const existing = await flightRepository.getById(req.params.id);
+    if (existing?.locked) {
+      res.status(403).json({ error: 'Voo bloqueado: não é possível excluir registro assinado (Res. 458/2017)' });
+      return;
+    }
+
+    const oldValues = existing ? { date: existing.date, registration: existing.registration } : null;
     const deleted = await flightRepository.delete(req.params.id);
     if (!deleted) {
       res.status(404).json({ error: 'Voo não encontrado' });
       return;
     }
+
+    await logAudit(req.body?.userId || 'default', 'DELETE', 'flight', req.params.id, oldValues, null, req.ip);
+
     res.json({ message: 'Voo excluído com sucesso' });
   } catch (error) {
     console.error('Error deleting flight:', error);
@@ -213,6 +266,99 @@ router.post('/import', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error importing flights:', error);
     res.status(500).json({ error: 'Erro ao importar dados' });
+  }
+});
+
+/**
+ * POST /api/flights/:id/sign
+ * Assinar voo eletronicamente (trava registro - Res. 458/2017)
+ */
+router.post('/:id/sign', async (req: Request, res: Response) => {
+  try {
+    const { userId, signatureData } = req.body;
+    if (!userId) {
+      res.status(400).json({ error: 'userId é obrigatório' });
+      return;
+    }
+
+    const flight = await flightRepository.signFlight(req.params.id, userId, signatureData || 'digital');
+    if (!flight) {
+      res.status(404).json({ error: 'Voo não encontrado' });
+      return;
+    }
+    res.json(flight);
+  } catch (error) {
+    console.error('Error signing flight:', error);
+    res.status(500).json({ error: 'Erro ao assinar voo' });
+  }
+});
+
+// ── Volumes do Diário de Bordo (Portaria 3.220/SPO) ──
+
+router.get('/volumes', async (req: Request, res: Response) => {
+  try {
+    const userId = (req.query.userId as string) || 'default';
+    const volumes = await flightRepository.getAllVolumes(userId);
+    res.json(volumes);
+  } catch (error) {
+    console.error('Error fetching volumes:', error);
+    res.status(500).json({ error: 'Erro ao buscar volumes' });
+  }
+});
+
+router.get('/volumes/:id', async (req: Request, res: Response) => {
+  try {
+    const volume = await flightRepository.getVolumeById(req.params.id);
+    if (!volume) { res.status(404).json({ error: 'Volume não encontrado' }); return; }
+    res.json(volume);
+  } catch (error) {
+    console.error('Error fetching volume:', error);
+    res.status(500).json({ error: 'Erro ao buscar volume' });
+  }
+});
+
+router.post('/volumes', async (req: Request, res: Response) => {
+  try {
+    const id = uuidv4();
+    const volume = await flightRepository.createVolume(req.body, id);
+    res.status(201).json(volume);
+  } catch (error) {
+    console.error('Error creating volume:', error);
+    res.status(500).json({ error: 'Erro ao criar volume' });
+  }
+});
+
+router.post('/volumes/:id/close', async (req: Request, res: Response) => {
+  try {
+    const volume = await flightRepository.closeVolume(req.params.id, req.body.signedBy || 'operator');
+    if (!volume) { res.status(404).json({ error: 'Volume não encontrado' }); return; }
+    res.json(volume);
+  } catch (error) {
+    console.error('Error closing volume:', error);
+    res.status(500).json({ error: 'Erro ao fechar volume' });
+  }
+});
+
+// ── Manutenção - Parte II (IAC 3151) ──
+
+router.get('/:flightId/maintenance', async (req: Request, res: Response) => {
+  try {
+    const records = await flightRepository.getMaintenanceByFlightId(req.params.flightId);
+    res.json(records);
+  } catch (error) {
+    console.error('Error fetching maintenance:', error);
+    res.status(500).json({ error: 'Erro ao buscar manutenção' });
+  }
+});
+
+router.post('/:flightId/maintenance', async (req: Request, res: Response) => {
+  try {
+    const id = uuidv4();
+    const record = await flightRepository.createMaintenance({ ...req.body, flightId: req.params.flightId }, id);
+    res.status(201).json(record);
+  } catch (error) {
+    console.error('Error creating maintenance:', error);
+    res.status(500).json({ error: 'Erro ao criar registro de manutenção' });
   }
 });
 

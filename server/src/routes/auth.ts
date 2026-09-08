@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { sql } from '../lib/db.js';
 import { initializeDatabase } from '../database.js';
+import { hashPassword, verifyPassword, generateSessionToken } from '../utils/encryption.js';
 
 const router = Router();
 
@@ -14,13 +15,6 @@ router.use(async (req, res, next) => {
   }
   next();
 });
-
-/**
- * Hash password using SHA-256 (for demo - use bcrypt in production)
- */
-function hashPassword(password: string): string {
-  return crypto.createHash('sha256').update(password).digest('hex');
-}
 
 /**
  * Generate simple JWT-like token
@@ -106,9 +100,8 @@ router.post('/login', async (req: Request, res: Response) => {
 
     const user = result[0];
 
-    // Verify password
-    const passwordHash = hashPassword(password);
-    if (user.password_hash !== passwordHash) {
+    // Verify password using PBKDF2
+    if (!verifyPassword(password, user.password_hash)) {
       res.status(401).json({ error: 'Usuário ou senha inválidos' });
       return;
     }

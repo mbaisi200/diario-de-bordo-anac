@@ -8,117 +8,31 @@ import {
   PlusCircle,
   AlertTriangle,
   BarChart3,
-  Zap
+  Zap,
+  FileText
 } from 'lucide-react';
-import type { FlightRecord, FlightStats } from '../types';
-import { flightUtils } from '../api/flights';
+import type { FlightStats } from '../types';
+import { flightApi, flightUtils } from '../api/flights';
 import FlightCard from '../components/FlightCard';
 import { useTheme } from '../contexts/ThemeContext';
-
-// Mock data for demo
-const mockFlights: FlightRecord[] = [
-  {
-    id: '1',
-    userId: 'default',
-    date: '2024-01-15',
-    departureTime: '14:00',
-    arrivalTime: '16:30',
-    aircraftType: 'Cessna 172 Skyhawk',
-    registration: 'PT-ABC',
-    departureAirport: 'SBGR',
-    arrivalAirport: 'SBGL',
-    flightTypes: ['pic', 'cross_country'],
-    flightTime: { day: 2.5, night: 0, instrument: 0, crossCountry: 2.5 },
-    pilotInCommand: 'João Silva',
-    copilot: '',
-    instructor: '',
-    landings: { day: 2, night: 0 },
-    remarks: 'Voo de ida ao RJ. Boas condições meteorológicas.',
-    status: 'completed',
-    createdAt: '2024-01-15T10:00:00Z',
-    updatedAt: '2024-01-15T16:30:00Z',
-  },
-  {
-    id: '2',
-    userId: 'default',
-    date: '2024-01-10',
-    departureTime: '08:00',
-    arrivalTime: '10:00',
-    aircraftType: 'Piper PA-28 Cherokee',
-    registration: 'PT-DEF',
-    departureAirport: 'SBSP',
-    arrivalAirport: 'SBKP',
-    flightTypes: ['dual', 'instruction'],
-    flightTime: { day: 2.0, night: 0, instrument: 0, crossCountry: 0 },
-    pilotInCommand: 'João Silva',
-    copilot: '',
-    instructor: 'Carlos Santos',
-    landings: { day: 4, night: 0 },
-    remarks: 'Prática de circuito de tráfego e pousos.',
-    status: 'completed',
-    createdAt: '2024-01-10T08:00:00Z',
-    updatedAt: '2024-01-10T10:00:00Z',
-  },
-  {
-    id: '3',
-    userId: 'default',
-    date: '2024-01-05',
-    departureTime: '19:00',
-    arrivalTime: '21:00',
-    aircraftType: 'Cessna 172 Skyhawk',
-    registration: 'PT-ABC',
-    departureAirport: 'SBGR',
-    arrivalAirport: 'SBCF',
-    flightTypes: ['pic', 'night'],
-    flightTime: { day: 0, night: 2.0, instrument: 1.5, crossCountry: 2.0 },
-    pilotInCommand: 'João Silva',
-    copilot: '',
-    instructor: '',
-    landings: { day: 0, night: 2 },
-    remarks: 'Voo noturno para Campinas. IFR parcial.',
-    status: 'completed',
-    createdAt: '2024-01-05T19:00:00Z',
-    updatedAt: '2024-01-05T21:00:00Z',
-  },
-];
+import { downloadComplianceReport } from '../utils/complianceReport';
 
 export default function Dashboard() {
-  const [flights] = useState<FlightRecord[]>(mockFlights);
   const [stats, setStats] = useState<FlightStats | null>(null);
   const { isDark } = useTheme();
 
   useEffect(() => {
-    // Calculate stats from mock data
-    const totalHours = flights.reduce(
-      (acc, flight) => ({
-        day: acc.day + flight.flightTime.day,
-        night: acc.night + flight.flightTime.night,
-        instrument: acc.instrument + flight.flightTime.instrument,
-        crossCountry: acc.crossCountry + flight.flightTime.crossCountry,
-        pic: acc.pic + (flight.flightTypes.includes('pic') ? flight.flightTime.day + flight.flightTime.night : 0),
-        sic: acc.sic + (flight.flightTypes.includes('sic') ? flight.flightTime.day + flight.flightTime.night : 0),
-        dual: acc.dual + (flight.flightTypes.includes('dual') ? flight.flightTime.day + flight.flightTime.night : 0),
-        solo: acc.solo + (flight.flightTypes.includes('solo') ? flight.flightTime.day + flight.flightTime.night : 0),
-      }),
-      { day: 0, night: 0, instrument: 0, crossCountry: 0, pic: 0, sic: 0, dual: 0, solo: 0 }
-    );
+    loadData();
+  }, []);
 
-    const totalLandings = flights.reduce(
-      (acc, flight) => ({
-        day: acc.day + flight.landings.day,
-        night: acc.night + flight.landings.night,
-      }),
-      { day: 0, night: 0 }
-    );
-
-    setStats({
-      totalFlights: flights.length,
-      totalHours,
-      totalLandings,
-      recentFlights: flights.slice(0, 3),
-      monthlyHours: [],
-    });
-  }, [flights]);
+  const loadData = async () => {
+    try {
+      const statsData = await flightApi.getStats();
+      setStats(statsData);
+    } catch (e) {
+      console.error('Erro ao carregar dados:', e);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -131,10 +45,19 @@ export default function Dashboard() {
           </div>
           <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>Visão geral do seu diário de bordo</p>
         </div>
-        <Link to="/new-flight" className="btn-primary inline-flex items-center justify-center">
-          <PlusCircle className="w-5 h-5 mr-2" />
-          Registrar Novo Voo
-        </Link>
+        <div className="flex gap-2">
+          <button
+            onClick={downloadComplianceReport}
+            className="btn-secondary inline-flex items-center border-green-500 text-green-400 hover:bg-green-900/30"
+          >
+            <FileText className="w-5 h-5 mr-2" />
+            Relatório IAC
+          </button>
+          <Link to="/new-flight" className="btn-primary inline-flex items-center justify-center">
+            <PlusCircle className="w-5 h-5 mr-2" />
+            Registrar Novo Voo
+          </Link>
+        </div>
       </div>
 
       {/* Stats Cards */}

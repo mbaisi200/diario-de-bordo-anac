@@ -107,6 +107,67 @@ export const flightApi = {
     }
     return response.json();
   },
+
+  /**
+   * Assinar voo eletronicamente (trava registro - Res. 458/2017)
+   */
+  async signFlight(id: string, userId: string, signatureData?: string): Promise<FlightRecord> {
+    const response = await fetch(`${API_BASE}/flights/${id}/sign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, signatureData }),
+    });
+    if (!response.ok) {
+      throw new Error('Erro ao assinar voo');
+    }
+    return response.json();
+  },
+
+  // ── Volumes do Diário de Bordo (Portaria 3.220/SPO) ──
+
+  async getVolumes(userId: string = 'default'): Promise<any[]> {
+    const response = await fetch(`${API_BASE}/flights/volumes?userId=${userId}`);
+    if (!response.ok) throw new Error('Erro ao buscar volumes');
+    return response.json();
+  },
+
+  async createVolume(data: any): Promise<any> {
+    const response = await fetch(`${API_BASE}/flights/volumes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Erro ao criar volume');
+    return response.json();
+  },
+
+  async closeVolume(id: string, signedBy: string): Promise<any> {
+    const response = await fetch(`${API_BASE}/flights/volumes/${id}/close`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ signedBy }),
+    });
+    if (!response.ok) throw new Error('Erro ao fechar volume');
+    return response.json();
+  },
+
+  // ── Manutenção - Parte II (IAC 3151) ──
+
+  async getMaintenance(flightId: string): Promise<any[]> {
+    const response = await fetch(`${API_BASE}/flights/${flightId}/maintenance`);
+    if (!response.ok) throw new Error('Erro ao buscar manutenção');
+    return response.json();
+  },
+
+  async createMaintenance(flightId: string, data: any): Promise<any> {
+    const response = await fetch(`${API_BASE}/flights/${flightId}/maintenance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Erro ao criar manutenção');
+    return response.json();
+  },
 };
 
 /**
