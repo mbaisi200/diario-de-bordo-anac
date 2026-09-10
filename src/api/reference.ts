@@ -18,6 +18,15 @@ export interface RegistrationOption {
   aircraftType: string;
   model: string;
   manufacturer: string;
+  serialNumber?: string;
+  category?: string;
+  year?: number | null;
+  icaoType?: string;
+  seats?: number | null;
+  maxTakeoffWeight?: number | null;
+  engineType?: string;
+  engineCount?: number | null;
+  source?: string;
 }
 
 /**

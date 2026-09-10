@@ -127,23 +127,27 @@ export interface AircraftMaintenanceRecord {
  * Registro de um voo individual
  * Conforme campos obrigatórios ANAC (Portaria 3.220/SPO/SAR)
  * e exigências de integridade (Resolução 458/2017)
+ * Estrutura baseada no modelo físico JOMARCA (rlvoo.jpeg)
  */
 export interface FlightRecord {
   id: string;
   tenantId?: string;
   userId: string;
   volumeId?: string;                  // ID do volume do diário
+  volumeNumber?: string;              // Número do diário (ex: 09/PR-JMN/2025)
 
   // ── Dados de Identificação do Voo (ANAC obrigatório) ──
-  sequentialNumber?: number;          // Número sequencial cronológico do voo
+  sequentialNumber?: number;          // Número sequencial cronológico do voo (etapa)
   flightNumber?: string;              // Número do voo
   flightRules?: FlightRules;          // Regras de voo (IFR/VFR)
   flightNature?: FlightNature;        // Natureza do voo (PV, FR, TN, etc.)
 
   // ── Data e hora (ANAC obrigatório) ──
   date: string;                       // YYYY-MM-DD
-  departureTime: string;              // HH:MM (UTC)
-  arrivalTime: string;                // HH:MM (UTC)
+  partidaTime?: string;               // Hora partida (off-block) - HH:MM (UTC)
+  departureTime: string;              // Hora decolagem (takeoff) - HH:MM (UTC)
+  arrivalTime: string;                // Hora pouso (landing) - HH:MM (UTC)
+  corteTime?: string;                 // Hora corte (shutdown) - HH:MM (UTC)
 
   // ── Aeronave (ANAC obrigatório) ──
   aircraftType: string;               // Tipo/certificação (ex: Cessna 172)
@@ -165,12 +169,21 @@ export interface FlightRecord {
     night: number;                    // Tempo noite (horas decimais)
     instrument: number;               // Tempo por instrumentos
     crossCountry: number;             // Tempo entre(cidades)
+    div?: number;                     // DIV - Dia Instrumento Visual
+    not?: number;                     // NOT - Noturno
+    vfr?: number;                     // VFR - Regras de Voo por Visualização
   };
 
   // ── Ciclos e pousos (ANAC obrigatório) ──
   cycles?: {
     partial: number;                  // Ciclos parciais (neste voo)
     total: number;                    // Ciclos totais acumulados
+    pousoPartial?: number;            // Pousos parciais (neste voo)
+    pousoTotal?: number;              // Pousos totais acumulados
+    ng1?: number;                     // NG 1 (Gas Generator) - ciclos parciais
+    ntl1?: number;                    // NTL 1 (Power Turbine) - ciclos parciais
+    ng1Total?: number;                // NG 1 total acumulado
+    ntl1Total?: number;               // NTL 1 total acumulado
   };
 
   // ── Distância (ANAC) ──
@@ -180,10 +193,12 @@ export interface FlightRecord {
   fuelType?: string;                  // Tipo de combustível (ex: 100LL, Jet-A1)
   fuelQuantityDeparture?: number;     // Qtd combustível na decolagem (litros/kg)
   fuelQuantityArrival?: number;       // Qtd combustível no pouso (litros/kg)
+  fuelTotal?: number;                 // Combustível total (kg)
 
   // ── Passageiros e carga ──
-  passengersCount?: number;           // Nº de passageiros
+  passengersCount?: number;           // Nº de passageiros (POB)
   cargoWeight?: number;               // Peso da carga transportada (kg)
+  flightNatureCode?: string;          // NAT - Código natureza (PV, FR, etc.)
 
   // ── Tripulação (ANAC obrigatório) ──
   crew?: CrewMember[];
@@ -191,9 +206,13 @@ export interface FlightRecord {
   // Legado - manter para compatibilidade
   pilotInCommand: string;             // Nome do PIC
   pilotInCommandLicense?: string;     // Nº licença ANAC do PIC
+  pilotInCommandFunction?: string;    // Função do PIC
   copilot: string;                    // Nome do SIC
   copilotLicense?: string;            // Nº licença ANAC do SIC
   instructor: string;                 // Nome do instrutor
+
+  // ── Rubrica PIC ──
+  picSignature?: string;              // Assinatura/rubrica do PIC
 
   // ── Pousos (ANAC obrigatório) ──
   landings: {
@@ -211,6 +230,40 @@ export interface FlightRecord {
 
   // ── Observações (ANAC) ──
   remarks: string;
+
+  // ── Horas Acumuladas ──
+  cumulativeHours?: {
+    horasCelula: number;              // Horas totais da célula
+    horasMotor: number;               // Horas totais do motor
+    cicloNg: number;                  // Ciclo NG acumulado
+    cicloNtl: number;                 // Ciclo NTL acumulado
+    pousoCelula: number;              // Pousos totais da célula
+  };
+
+  // ── Inspeção de VOR (RBAC 91.171) ──
+  vorInspection?: {
+    vor1Rddme?: string;               // VOR #1 - RD/DME
+    vor1Difference?: number;          // Diferença de marcação VOR #1
+    vor2Rddme?: string;               // VOR #2 - RD/DME
+    vor2Difference?: number;          // Diferença de marcação VOR #2
+    maxAllowedDifference: number;     // Máximo permitido (4 graus)
+  };
+
+  // ── Banco de Dados - GPS/FMS ──
+  databaseUpdate?: {
+    updated: boolean;                 // Atualizado? SIM/NÃO
+    lastUpdate?: string;              // Data da última atualização
+    expiration?: string;              // Vencimento
+  };
+
+  // ── Parte II - Situação Técnica da Aeronave ──
+  maintenanceRecord?: {
+    lastMaintenanceType?: string;     // Tipo da última intervenção de manutenção
+    nextMaintenanceType?: string;     // Tipo da próxima intervenção
+    hoursToNextMaintenance?: number;  // Horas de célula para próxima intervenção
+    releasedByCode?: string;          // Código ANAC do responsável
+    releasedBySignature?: string;     // Rubrica/assinatura do responsável
+  };
 
   // ── Status ──
   status: FlightStatus;

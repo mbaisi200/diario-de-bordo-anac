@@ -15,6 +15,8 @@
     { "source": "/api/admin/(.*)", "destination": "/api/admin/$1" },
     { "source": "/api/airports", "destination": "/api/airports.js" },
     { "source": "/api/aircraft-types", "destination": "/api/aircraft-types.js" },
+    { "source": "/api/registrations", "destination": "/api/registrations.js" },
+    { "source": "/api/import-rab", "destination": "/api/import-rab.js" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

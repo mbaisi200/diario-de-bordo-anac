@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
+    "csv-parse": "^7.0.2",
+    "dotenv": "^17.4.2",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "^0.294.0",

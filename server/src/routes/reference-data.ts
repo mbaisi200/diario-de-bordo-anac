@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dataDir = path.join(__dirname, '..', '..', 'data');
+const dataDir = path.join(__dirname, '..', '..', '..', 'data');
 
 let airportsCache = null;
 let aircraftTypesCache = null;
@@ -66,7 +66,7 @@ router.get('/aircraft-types', (req, res) => {
   return res.json({ data: results });
 });
 
-// Busca de matrículas de aeronaves (registradas + histórico de voos)
+// Busca de matrículas de aeronaves (RAB/ANAC + registradas + histórico de voos)
 router.get('/registrations', async (req, res) => {
   try {
     const q = (req.query.q || '').toString().trim().toUpperCase();
@@ -75,10 +75,50 @@ router.get('/registrations', async (req, res) => {
       return res.json({ data: [] });
     }
 
-    // Buscar de aeronaves cadastradas pelo admin
-    let aircraftResults: any[] = [];
+    const seen = new Set<string>();
+    const results: any[] = [];
+    const db = (await import('../lib/db.js')).sql;
+
+    // 1. Buscar na tabela aircraft_rab (dados ANAC/RAB)
     try {
-      aircraftResults = await (await import('../lib/db.js')).query(
+      const rabResults = await db(
+        `SELECT marcas, ds_modelo, nm_fabricante, nr_serie, cd_cls, nr_ano_fabricacao,
+                cd_tipo_icao, nr_assentos, nr_pmd, tp_motor, qt_motor
+         FROM aircraft_rab
+         WHERE marcas ILIKE $1
+         ORDER BY marcas ASC
+         LIMIT 15`,
+        [`%${q}%`]
+      );
+
+      for (const r of rabResults) {
+        const reg = (r.marcas || '').toUpperCase();
+        if (reg && !seen.has(reg)) {
+          seen.add(reg);
+          results.push({
+            registration: reg,
+            aircraftType: r.ds_modelo || '',
+            model: r.ds_modelo || '',
+            manufacturer: r.nm_fabricante || '',
+            serialNumber: r.nr_serie || '',
+            category: r.cd_cls || '',
+            year: r.nr_ano_fabricacao || null,
+            icaoType: r.cd_tipo_icao || '',
+            seats: r.nr_assentos || null,
+            maxTakeoffWeight: r.nr_pmd || null,
+            engineType: r.tp_motor || '',
+            engineCount: r.qt_motor || null,
+            source: 'rab',
+          });
+        }
+      }
+    } catch (err: any) {
+      console.warn('RAB table not available:', err.message);
+    }
+
+    // 2. Buscar de aeronaves cadastradas pelo admin
+    try {
+      const aircraftResults = await db(
         `SELECT DISTINCT registration, type as aircraft_type, model, manufacturer
          FROM aircrafts
          WHERE registration ILIKE $1 AND active = TRUE
@@ -86,14 +126,27 @@ router.get('/registrations', async (req, res) => {
          LIMIT 15`,
         [`%${q}%`]
       );
+
+      for (const r of aircraftResults) {
+        const reg = (r.registration || '').toUpperCase();
+        if (reg && !seen.has(reg)) {
+          seen.add(reg);
+          results.push({
+            registration: reg,
+            aircraftType: r.aircraft_type || r.type || '',
+            model: r.model || '',
+            manufacturer: r.manufacturer || '',
+            source: 'admin',
+          });
+        }
+      }
     } catch {
       // Tabela aircrafts pode não existir ainda
     }
 
-    // Buscar de voos anteriores
-    let flightResults: any[] = [];
+    // 3. Buscar de voos anteriores
     try {
-      flightResults = await (await import('../lib/db.js')).query(
+      const flightResults = await db(
         `SELECT DISTINCT registration, aircraft_type
          FROM flights
          WHERE registration ILIKE $1
@@ -101,25 +154,22 @@ router.get('/registrations', async (req, res) => {
          LIMIT 15`,
         [`%${q}%`]
       );
+
+      for (const r of flightResults) {
+        const reg = (r.registration || '').toUpperCase();
+        if (reg && !seen.has(reg)) {
+          seen.add(reg);
+          results.push({
+            registration: reg,
+            aircraftType: r.aircraft_type || '',
+            model: '',
+            manufacturer: '',
+            source: 'flights',
+          });
+        }
+      }
     } catch {
       // Tabela flights pode não ter sido criada ainda
-    }
-
-    // Combinar resultados, removendo duplicatas
-    const seen = new Set<string>();
-    const results: any[] = [];
-
-    for (const r of [...aircraftResults, ...flightResults]) {
-      const reg = r.registration?.toUpperCase();
-      if (reg && !seen.has(reg)) {
-        seen.add(reg);
-        results.push({
-          registration: reg,
-          aircraftType: r.aircraft_type || r.type || '',
-          model: r.model || '',
-          manufacturer: r.manufacturer || '',
-        });
-      }
     }
 
     return res.json({ data: results.slice(0, 20) });

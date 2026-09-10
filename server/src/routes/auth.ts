@@ -75,6 +75,19 @@ function verifyToken(token: string): { userId: string; username: string; role: s
 }
 
 /**
+ * Verify password - supports both SHA-256 (Vercel) and PBKDF2 (local) formats
+ */
+function verifyPasswordCompatible(password: string, storedHash: string): boolean {
+  // PBKDF2 format: salt:hex (from local server)
+  if (storedHash.includes(':') && storedHash.split(':').length === 2) {
+    return verifyPassword(password, storedHash);
+  }
+  // SHA-256 format: hex only (from Vercel serverless functions)
+  const sha256Hash = crypto.createHash('sha256').update(password).digest('hex');
+  return sha256Hash === storedHash;
+}
+
+/**
  * POST /api/auth/login
  * Login with username and password
  */
@@ -100,8 +113,8 @@ router.post('/login', async (req: Request, res: Response) => {
 
     const user = result[0];
 
-    // Verify password using PBKDF2
-    if (!verifyPassword(password, user.password_hash)) {
+    // Verify password - supports both SHA-256 (Vercel) and PBKDF2 (local)
+    if (!verifyPasswordCompatible(password, user.password_hash)) {
       res.status(401).json({ error: 'Usuário ou senha inválidos' });
       return;
     }
