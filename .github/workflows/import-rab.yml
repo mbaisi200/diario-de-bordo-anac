@@ -1,0 +1,44 @@
+name: Importar RAB ANAC
+
+on:
+  schedule:
+    # Executa todo dia 5 de cada mês às 06:00 UTC
+    - cron: '0 6 5 * *'
+  workflow_dispatch: # Permite trigger manual
+
+jobs:
+  import-rab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Importar dados RAB da ANAC
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: node scripts/import-rab.js
+
+      - name: Verificar total de registros
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          node -e "
+            const pg = require('pg');
+            const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+            pool.query('SELECT COUNT(*) as total FROM aircraft_rab').then(r => {
+              console.log('Total de aeronaves no RAB:', r.rows[0].total);
+              pool.end();
+            });
+          "
